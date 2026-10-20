@@ -1,3 +1,4 @@
+import { Bot, Wand2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { DifficultyTier, EvidenceLabel, StepOwner } from "@/lib/schema/guide";
 
@@ -42,6 +43,18 @@ const OWNER_CLASS: Record<StepOwner, string> = {
   you_must_do: "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200",
 };
 
+const OWNER_ICON: Record<StepOwner, typeof Bot> = {
+  agent_can_do: Bot,
+  agent_can_assist: Wand2,
+  you_must_do: User,
+};
+
 export function OwnerBadge({ owner }: { owner: StepOwner }) {
-  return <Badge className={OWNER_CLASS[owner]}>{OWNER_LABEL[owner]}</Badge>;
+  const Icon = OWNER_ICON[owner];
+  return (
+    <Badge className={OWNER_CLASS[owner]}>
+      <Icon className="size-3" />
+      {OWNER_LABEL[owner]}
+    </Badge>
+  );
 }

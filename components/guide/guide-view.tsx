@@ -122,28 +122,37 @@ export function GuideView({ guide }: { guide: Guide }) {
           <CardTitle className="text-base">Steps</CardTitle>
         </CardHeader>
         <CardContent>
-          <ol className="space-y-4">
+          <ol className="space-y-0">
             {[...guide.steps]
               .sort((a, b) => a.order - b.order)
-              .map((step) => (
-                <li key={step.order} className="border-l-2 border-border pl-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {step.order}. {step.title}
-                    </span>
-                    <OwnerBadge owner={step.owner} />
-                    {step.estimatedMinutes && (
-                      <span className="text-xs text-muted-foreground">~{step.estimatedMinutes} min</span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
-                  {step.evidence && (
-                    <div className="mt-1">
-                      <ClaimLine text={step.evidence.text} evidence={step.evidence.evidence} sourceUrl={step.evidence.sourceUrl} />
+              .map((step, i, arr) => {
+                const isLast = i === arr.length - 1;
+                return (
+                  <li key={step.order} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-border bg-muted text-xs font-medium">
+                        {step.order}
+                      </div>
+                      {!isLast && <div className="w-0.5 flex-1 min-h-6 bg-border" />}
                     </div>
-                  )}
-                </li>
-              ))}
+                    <div className={isLast ? "pb-1" : "pb-6"}>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className="text-sm font-medium">{step.title}</span>
+                        <OwnerBadge owner={step.owner} />
+                        {step.estimatedMinutes && (
+                          <span className="text-xs text-muted-foreground">~{step.estimatedMinutes} min</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
+                      {step.evidence && (
+                        <div className="mt-1">
+                          <ClaimLine text={step.evidence.text} evidence={step.evidence.evidence} sourceUrl={step.evidence.sourceUrl} />
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
           </ol>
         </CardContent>
       </Card>

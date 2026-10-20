@@ -1,20 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-type Line =
-  | { kind: "step"; label: string; status: "running" | "done" | "warning" }
-  | { kind: "error"; message: string };
+import { Card, CardContent } from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
+import {
+  PipelineStepper,
+  initialStepStatus,
+  type StepKey,
+  type StepStatusMap,
+} from "./pipeline-stepper";
 
 type StreamedEvent =
   | { type: "cached"; slug: string; updatedAt: string }
-  | { type: "step_start"; step: string; label: string }
-  | { type: "step_done"; step: string; label: string; detail?: string }
-  | { type: "step_warning"; step: string; label: string; detail: string }
+  | { type: "step_start"; step: StepKey; label: string }
+  | { type: "step_done"; step: StepKey; label: string; detail?: string }
+  | { type: "step_warning"; step: StepKey; label: string; detail: string }
   | { type: "error"; message: string }
   | { type: "done"; slug: string };
 
@@ -22,23 +26,21 @@ export function GenerateForm() {
   const router = useRouter();
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
-  const [lines, setLines] = useState<Line[]>([]);
+  const [status, setStatus] = useState<StepStatusMap | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
   const [cached, setCached] = useState<{ slug: string; updatedAt: string } | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   async function run(force: boolean) {
     setRunning(true);
-    setLines([]);
+    setStatus(initialStepStatus());
+    setFatalError(null);
     setCached(null);
-    const controller = new AbortController();
-    abortRef.current = controller;
 
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input, force }),
-        signal: controller.signal,
       });
 
       if (!res.body) throw new Error("No response body");
@@ -59,7 +61,7 @@ export function GenerateForm() {
         }
       }
     } catch {
-      setLines((prev) => [...prev, { kind: "error", message: "Connection lost -- please try again." }]);
+      setFatalError("Connection lost -- please try again.");
       setRunning(false);
     }
   }
@@ -71,38 +73,34 @@ export function GenerateForm() {
       return;
     }
     if (event.type === "step_start") {
-      setLines((prev) => [...prev, { kind: "step", label: event.label, status: "running" }]);
+      setStatus((prev) => (prev ? { ...prev, [event.step]: { state: "running" } } : prev));
       return;
     }
     if (event.type === "step_done") {
-      setLines((prev) => updateLastRunning(prev, event.label, "done"));
+      setStatus((prev) => (prev ? { ...prev, [event.step]: { state: "done", detail: event.detail } } : prev));
       return;
     }
     if (event.type === "step_warning") {
-      setLines((prev) => updateLastRunning(prev, `${event.label} -- ${event.detail}`, "warning"));
+      setStatus((prev) => (prev ? { ...prev, [event.step]: { state: "warning", detail: event.detail } } : prev));
       return;
     }
     if (event.type === "error") {
-      setLines((prev) => [...prev, { kind: "error", message: event.message }]);
       setRunning(false);
+      setStatus((prev) => {
+        if (!prev) return prev;
+        const runningKey = (Object.keys(prev) as StepKey[]).find((k) => prev[k].state === "running");
+        if (!runningKey) {
+          setFatalError(event.message);
+          return prev;
+        }
+        return { ...prev, [runningKey]: { state: "error", detail: event.message } };
+      });
       return;
     }
     if (event.type === "done") {
       setRunning(false);
       router.push(`/guides/${event.slug}`);
     }
-  }
-
-  function updateLastRunning(prev: Line[], label: string, status: "done" | "warning"): Line[] {
-    const next = [...prev];
-    for (let i = next.length - 1; i >= 0; i--) {
-      const line = next[i];
-      if (line.kind === "step" && line.status === "running") {
-        next[i] = { kind: "step", label, status };
-        break;
-      }
-    }
-    return next;
   }
 
   return (
@@ -121,6 +119,7 @@ export function GenerateForm() {
           disabled={running}
         />
         <Button type="submit" disabled={running || !input.trim()}>
+          <Sparkles className="size-4" />
           {running ? "Generating..." : "Generate guide"}
         </Button>
       </form>
@@ -142,21 +141,19 @@ export function GenerateForm() {
         </Alert>
       )}
 
-      {lines.length > 0 && (
-        <ul className="space-y-1 rounded-lg border p-3 text-sm">
-          {lines.map((line, i) =>
-            line.kind === "error" ? (
-              <li key={i} className="text-destructive">
-                {line.message}
-              </li>
-            ) : (
-              <li key={i} className="flex items-center gap-2">
-                <span aria-hidden>{line.status === "running" ? "⏳" : line.status === "warning" ? "⚠️" : "✅"}</span>
-                <span className={line.status === "warning" ? "text-amber-600" : ""}>{line.label}</span>
-              </li>
-            )
-          )}
-        </ul>
+      {fatalError && (
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>{fatalError}</AlertDescription>
+        </Alert>
+      )}
+
+      {status && (
+        <Card>
+          <CardContent className="pt-5">
+            <PipelineStepper status={status} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );
