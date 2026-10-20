@@ -4,6 +4,10 @@ import { GuideSchema } from "@/lib/schema/guide";
 import { GenerateForm } from "@/components/guide/generate-form";
 import { GuideCard } from "@/components/guide/guide-card";
 
+// Always reflects live DB state (guides can be generated at any moment) --
+// never prerender this at build time.
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const rows = await listGuides();
   const guides = rows

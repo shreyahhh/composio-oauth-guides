@@ -1,36 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OAuth Setup Guides
 
-## Getting Started
+A developer building an AI agent doesn't actually want to know "how does
+OAuth work" -- they want to know **how long until I can launch, and what
+will block me?** when they need to register their own OAuth app with a
+provider (Gmail, Slack, LinkedIn, ...) before their users can connect it.
 
-First, run the development server:
+This is a small, working tool for that: a library of verdict-first guides,
+a live agent pipeline that investigates and writes a new guide for any app
+in real time, and an honest evidence trail on every claim it makes.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Live app:** _fill in your Vercel URL once deployed_
+- **Evidence & Verification:** `/evidence`
+- **Agent-readable index:** `/llms.txt`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What's here
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **A guide library** (`data/guides/`): GitHub, Notion, Spotify, and Google,
+  deliberately chosen to contrast four different kinds of friction --
+  no gate, a review queue, a hard user quota, and a verification +
+  security-assessment wall. Every claim in these is backed by a citation to
+  the provider's own docs (fetched directly), researched by this agent --
+  **not hands-on tested**. See "Limitations" below for exactly what that
+  means and what you should test yourself before relying on it.
+- **A live generation pipeline** (`lib/pipeline/`): submit any app name or
+  URL and watch it resolve the provider, research it (grounded web search +
+  reading the official docs directly), check Composio for a managed-auth
+  shortcut, draft a guide against a shared schema, and critique its own
+  claims before saving -- all streamed step by step.
+- **Evidence labeling** on every material claim: `TESTED` / `DOCUMENTED` /
+  `REPORTED` / `UNCERTAIN`, each with a source link and a last-checked date
+  (schema in `lib/schema/guide.ts`).
+- **A Playwright setup-attempt script** (`scripts/playwright-setup-attempt.ts`)
+  that drives GitHub's real OAuth App creation form up to the point a human
+  must log in, log in and continue -- it never sees or stores credentials.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setup
 
-## Learn More
+1. **Clone and install**
+   ```bash
+   npm install
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. **Environment variables** -- copy `.env.example` to `.env.local` and fill in:
+   - `DATABASE_URL` -- a Neon Postgres connection string (free tier; see
+     neon.tech dashboard -> your project -> Connection Details)
+   - `GEMINI_API_KEY` -- from [Google AI Studio](https://aistudio.google.com/apikey)
+     (free tier)
+   - `COMPOSIO_API_KEY` -- from [app.composio.dev](https://app.composio.dev) (free plan)
+   - `GEMINI_MODEL` -- optional, defaults to `gemini-flash-latest` (see
+     "Key decisions" below for why)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   **Never commit `.env.local`.** Only `.env.example` (with empty values) is
+   tracked.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Push the DB schema and seed the handcrafted library**
+   ```bash
+   npm run db:push
+   npm run seed
+   ```
+   The seed script writes the four handcrafted guides and checks Composio's
+   managed-auth status for each live, via the SDK -- it isn't hardcoded.
 
-## Deploy on Vercel
+4. **Run it**
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+5. **Deploy** -- push to GitHub, import into Vercel (Hobby plan is enough),
+   set the same three env vars there, and it's live. No paid plan or credit
+   card required anywhere in this stack.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+6. **(Optional) Generate the Evidence & Verification comparisons**
+   ```bash
+   npm run evidence:generate
+   ```
+   This runs the live pipeline against "GitHub" and "Google" into
+   `github-generated` / `google-generated` rows, so `/evidence` can compare
+   them to the verified handcrafted guides. Fill in
+   `data/evidence-findings.ts` with what you observe afterward.
+
+7. **(Optional) Run the GitHub setup-attempt script**
+   ```bash
+   npm run setup-attempt:github
+   ```
+   Opens a real browser window, drives GitHub's new-OAuth-App form up to
+   the login wall, waits for you to log in by hand, then screenshots the
+   form fields. **Review the screenshots in `evidence/github/` before
+   committing** -- the GitHub nav bar will show your real username/avatar.
+
+## Key decisions
+
+- **Research and Draft are separate LLM calls, by design, not by accident.**
+  The Vercel AI SDK's Google provider cannot combine Search grounding with
+  structured-output mode in a single call ([vercel/ai#11599](https://github.com/vercel/ai/issues/11599)
+  at time of writing). So Research runs grounded and produces free text +
+  source URLs; Draft runs ungrounded and reorganizes that text into the
+  schema. This also happens to be exactly the pipeline shape the assignment
+  itself suggested.
+- **A dedicated Critic pass**, not just prompting Draft to "be careful."
+  It's a second structured-output call that checks every claim against the
+  actual list of source URLs collected during Research and downgrades
+  anything unsupported to `UNCERTAIN` before the guide is ever saved. This
+  is the guardrail against a confident-but-fabricated guide.
+- **`gemini-flash-latest`, not a pinned model id.** Google no longer
+  publishes a universal free-tier rate-limit table (limits are
+  project-specific, visible only in your own AI Studio console) and ships
+  new model generations fast -- a pinned id risks going stale. The floating
+  alias trades a small amount of reproducibility for not breaking later.
+  Override via `GEMINI_MODEL` if you want to pin one.
+- **Composio's managed-auth check is a live SDK call, not a guess.** Both
+  the seed script and the live pipeline call
+  `composio.toolkits.get(slug)` and read `composioManagedAuthSchemes`,
+  surfacing the specific auth scheme rather than a bare yes/no -- a toolkit
+  can have multiple auth methods with mixed managed status, per Composio's
+  own managed-auth docs.
+- **Cache Components (Next.js 16's new PPR model) is turned off.** Every
+  page here reflects live DB state (a guide can be generated at any
+  moment), so there's no static-shell benefit worth the `use cache` /
+  `<Suspense>` restructuring it requires. Plain dynamic rendering is simpler
+  and correct for this app.
+- **Drizzle + Neon's HTTP driver (`neon-http`)**, not a persistent
+  connection pool -- matches Neon's serverless/autosuspend model and works
+  cleanly from Vercel's serverless functions.
+- **Playwright runs locally only, and only for GitHub.** Portal UIs are too
+  heterogeneous and brittle to script reliably for every provider in the
+  time available; one real example proves the "agent attempts setup"
+  concept. It's a dev-only script (`scripts/`), never deployed, and stops
+  at every login/legal/identity boundary -- it never sees or stores
+  credentials.
+
+## Limitations
+
+- **The handcrafted guides are researched, not hands-on tested, by this
+  agent.** Every claim in `data/guides/*.ts` cites a provider doc fetched
+  directly and is labeled `DOCUMENTED` or `REPORTED` -- never `TESTED`,
+  because that would mean claiming hands-on verification that didn't
+  happen. Each file has a comment pointing at exactly which steps you
+  should walk through yourself (creating the OAuth app, generating a
+  secret, running the authorization flow) and upgrade to `TESTED` once you
+  have.
+- **Free-tier numbers that could not be verified with confidence** (flagged
+  rather than guessed):
+  - Exact Gemini RPM/RPD/TPM for the free tier -- Google states these are
+    project-specific and no longer published as a universal table. Check
+    your own AI Studio console before relying on a number.
+  - Exact free Search-grounding daily quota (conflicting reports of 500 vs.
+    1,500 requests/day, shared with Flash-Lite models).
+  - Neon's cold-start latency after its 5-minute autosuspend (not
+    officially documented; commonly reported, not confirmed, as fast).
+  - Whether a long-idle free Neon project risks archival -- not addressed
+    in the docs found; worth checking the Neon dashboard before a review
+    call happening weeks after you stop actively using the project.
+- **The Evidence & Verification page covers 2 apps (GitHub, Google), not
+  the whole library** -- chosen as the easy/hard contrast pair, not
+  because the other two are less interesting. Scaling this comparison to
+  every library app is the natural next step.
+- **Composio's `composioManagedAuthSchemes` is toolkit-level.** When a
+  toolkit supports multiple auth schemes with mixed managed status, the
+  guide surfaces the specific scheme(s) Composio manages, but a developer
+  should still open the toolkit's own Composio page to confirm for their
+  exact use case.
+- **A single same-input cache check, not true dedup.** `/api/generate`
+  short-circuits on an exact repeat of the same input string, but a
+  differently-worded input for the same provider (e.g. "gmail" vs. "Google
+  Mail") can still re-run the pipeline -- it will update the same resolved
+  slug's row rather than creating a duplicate, but won't short-circuit on
+  the first pass.
+
+## Evidence summary
+
+See `/evidence` for the live comparison. In short: run
+`npm run evidence:generate` once credentials are set, then fill in
+`data/evidence-findings.ts` with what the agent got right, wrong, or
+missed against the verified GitHub and Google guides, and this section
+should summarize those findings in 2-3 sentences before submission.
+
+## What's next
+
+- **Scale to the full 100-app vision**: the schema and pipeline don't
+  change -- it's purely a matter of running more handcrafted research
+  passes and letting the live pipeline backfill the long tail on demand.
+- **Scheduled re-verification and change detection**: re-run Research
+  periodically for library guides and diff against the saved claims,
+  flagging ones whose source page has changed since `lastChecked`.
+- **Community corrections**: let developers who actually complete setup
+  submit a correction to a specific claim, with their own evidence --
+  turning every real attempt into a source for the next developer.
+- **Finer-grained Composio checks**: surface per-scope (not just
+  per-toolkit) managed-auth status where Composio's API supports it.
+- **More Playwright setup-attempt providers**: GitHub proves the concept;
+  Notion and Spotify's dashboards look similarly scriptable up to their
+  own login walls.
+
+## No credentials, ever
+
+`.env.local` is gitignored; only `.env.example` (empty values) is tracked.
+The Playwright script never receives, stores, or transmits a password, 2FA
+code, or API key -- it waits for you to complete every authenticated step
+by hand in the browser window it opens. No paid account or completed
+provider approval was required to build or run any part of this.

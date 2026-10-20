@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { evidenceComparisons } from "@/data/evidence-findings";
 
+// Reads live DB state -- never prerender at build time.
+export const dynamic = "force-dynamic";
+
 const CATEGORY_LABEL = { correct: "Got right", wrong: "Got wrong", missing: "Missed" } as const;
 
 async function Comparison({ slug, appName, findings }: { slug: string; appName: string; findings: { category: keyof typeof CATEGORY_LABEL; note: string }[] }) {
