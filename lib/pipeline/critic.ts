@@ -38,6 +38,7 @@ export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[]): 
   const { object } = await withBackoff(() =>
     generateObject({
       model: flashModel,
+      maxRetries: 0,
       schema: CriticResultSchema,
       prompt: `You are auditing an OAuth setup guide for fabricated or unsupported claims before it's published.
 

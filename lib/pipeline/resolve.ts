@@ -34,6 +34,7 @@ export async function resolveApp(input: string): Promise<ResolvedApp> {
   const result = await withBackoff(() =>
     generateText({
       model: flashModel,
+      maxRetries: 0,
       prompt: `A developer wants to set up OAuth / "Sign in with ${input}" for their app. Using ONLY the search results below, figure out:
 1. The canonical product/company name behind "${input}".
 2. Its public website URL.

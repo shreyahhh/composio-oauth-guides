@@ -24,6 +24,7 @@ export async function draftGuide(
   const { object } = await withBackoff(() =>
     generateObject({
       model: flashModel,
+      maxRetries: 0,
       schema: DraftedGuideSchema,
       // Groq's strict structured-output mode (the reliable path) requires
       // every property to be listed in the JSON schema's `required` array --

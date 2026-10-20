@@ -5,7 +5,14 @@ import { fetchAndExtract } from "@/lib/readability";
 import { tavilySearch } from "@/lib/search/tavily";
 import type { ResolvedApp, ResearchResult, ResearchSource } from "./types";
 
-const MAX_DOC_CHARS = 8000;
+// Kept deliberately small: Groq's free tier has an 8,000 tokens/minute
+// budget per model, and this text gets echoed again (in full) into the
+// Draft prompt right after this call -- a large narrative here was
+// blowing that budget on a single Draft request, triggering 429s that a
+// short backoff couldn't recover from (per-minute limits need tens of
+// seconds, not a 1-4s exponential backoff, to reset).
+const MAX_DOC_CHARS = 4000;
+const MAX_NARRATIVE_CHARS = 4000;
 
 /**
  * Reads the official docs page directly (if we found one) via Readability,
@@ -25,7 +32,7 @@ export async function researchApp(resolved: ResolvedApp): Promise<ResearchResult
 
   const searchResults = await tavilySearch(
     `${resolved.appName} OAuth app review process verification required scopes rate limits approval time`,
-    8
+    5
   );
 
   const sources: ResearchSource[] = [];
@@ -47,6 +54,7 @@ export async function researchApp(resolved: ResolvedApp): Promise<ResearchResult
   const result = await withBackoff(() =>
     generateText({
       model: flashModel,
+      maxRetries: 0,
       prompt: `You are researching how a developer sets up and gets approved for an OAuth app with "${resolved.appName}" (developer portal: ${resolved.developerPortalUrl ?? "unknown"}), so their own app's users can connect their ${resolved.appName} accounts.
 
 Use ONLY the two source blocks below -- the official docs text and the search results. These are the only sources available to you; do not rely on general background knowledge for anything you present as a fact, and say explicitly when something isn't covered by these sources.
@@ -68,5 +76,5 @@ Be concrete. If the sources above don't cover something or conflict, say so expl
     })
   );
 
-  return { narrative: result.text, sources };
+  return { narrative: result.text.slice(0, MAX_NARRATIVE_CHARS), sources };
 }

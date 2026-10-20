@@ -171,6 +171,17 @@ in real time, and an honest evidence trail on every claim it makes.
   concept. It's a dev-only script (`scripts/`), never deployed, and stops
   at every login/legal/identity boundary -- it never sees or stores
   credentials.
+- **Research prompts are capped at ~4,000 characters (docs text and
+  narrative alike), and `maxRetries: 0` is set on every LLM call.** Found
+  by testing, not assumption: Groq's free tier enforces an 8,000
+  tokens/minute budget, and the Research step's narrative was being echoed
+  back in full into the Draft prompt -- a single Draft call could use
+  4,000-7,000 tokens, leaving almost no headroom and triggering 429s that
+  a naive 1-4s exponential backoff couldn't recover from (a per-minute
+  budget needs tens of seconds to reset, not seconds). `maxRetries: 0`
+  stops the AI SDK's own internal retry from masking the real
+  `x-ratelimit-reset-tokens` value our own `withBackoff` (`lib/ai/retry.ts`)
+  needs to wait the correct amount of time.
 
 ## Limitations
 
