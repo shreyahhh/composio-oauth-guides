@@ -52,7 +52,7 @@ in real time, and an honest evidence trail on every claim it makes.
      (free plan). **Switch the dashboard to "Platform" mode first** (not
      "For You"), then Settings -> Project Settings -> API Keys -- the "For
      You" mode's key is an MCP consumer key and won't authenticate the SDK.
-   - `GROQ_MODEL` -- optional, defaults to `llama-3.3-70b-versatile` (see
+   - `GROQ_MODEL` -- optional, defaults to `openai/gpt-oss-120b` (see
      "Key decisions" below for why)
 
    **Never commit `.env.local`.** Only `.env.example` (with empty values) is
@@ -132,13 +132,25 @@ in real time, and an honest evidence trail on every claim it makes.
   actual list of source URLs collected during Research and downgrades
   anything unsupported to `UNCERTAIN` before the guide is ever saved. This
   is the guardrail against a confident-but-fabricated guide.
-- **`llama-3.3-70b-versatile`, not a Gemini model.** Chosen as Groq's
-  solid general-purpose free-tier model with a large context window.
-  `providerOptions: { groq: { structuredOutputs: true } }` is set on the
-  Draft and Critic calls to use Groq's native structured-output mode
-  rather than a looser JSON-in-prompt fallback. Override via `GROQ_MODEL`;
-  check console.groq.com/docs/models for current options and per-model
-  rate limits, which vary by model and change often.
+- **`openai/gpt-oss-120b`, not a Gemini model.** Groq's catalog turns over
+  fast enough that the first model chosen here (`llama-3.3-70b-versatile`)
+  was already retired by the time of testing -- confirmed by querying
+  `GET https://api.groq.com/openai/v1/models` directly rather than trusting
+  stale docs. Override via `GROQ_MODEL`; re-check that models endpoint or
+  console.groq.com/docs/models for current options and per-model rate
+  limits before relying on this default.
+- **`GuideSchema` uses `z.nullable()`, not `z.optional()`, throughout.**
+  Groq's strict structured-output mode (`providerOptions: { groq: {
+  structuredOutputs: true } }`, used on the Draft call) is like OpenAI's:
+  it rejects Zod's `.url()` format keyword outright, and separately
+  requires every property to be listed in the JSON schema's `required`
+  array -- which rules out `.optional()` for any field the model fills in.
+  Reworking every optional field (sourceUrl, estimatedMinutes, workaround,
+  a step's evidence, appUrl, providerDocsUrl, developerPortalUrl,
+  pipelineVersion, and the ManagedAuthStatus fields) as nullable instead
+  was the actual fix, not a workaround around it -- `null` is the
+  schema's honest "not applicable / unknown" value everywhere a field
+  isn't filled in, including in the handcrafted guide data files.
 - **Composio's managed-auth check is a live SDK call, not a guess.** Both
   the seed script and the live pipeline call
   `composio.toolkits.get(slug)` and read `composioManagedAuthSchemes`,

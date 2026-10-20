@@ -6,7 +6,7 @@ import type { Guide } from "@/lib/schema/guide";
 import { DifficultyBadge, EvidenceBadge, OwnerBadge } from "./badges";
 import { CopyLinkButton } from "./copy-link-button";
 
-function ClaimLine({ text, evidence, sourceUrl }: { text: string; evidence: Guide["prerequisites"][number]["evidence"]; sourceUrl?: string }) {
+function ClaimLine({ text, evidence, sourceUrl }: { text: string; evidence: Guide["prerequisites"][number]["evidence"]; sourceUrl?: string | null }) {
   return (
     <li className="flex flex-wrap items-start gap-2 text-sm">
       <EvidenceBadge label={evidence} />

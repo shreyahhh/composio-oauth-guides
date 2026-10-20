@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       try {
         await runPipeline({ input, onEvent: send });
       } catch (err) {
+        console.error(err);
         send({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
       } finally {
         controller.close();

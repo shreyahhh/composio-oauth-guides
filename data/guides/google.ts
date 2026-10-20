@@ -49,6 +49,7 @@ export const googleGuide: HandcraftedGuideInput = {
       description: "No verification is required in Testing mode -- you can start authorizing test users immediately.",
       owner: "you_must_do",
       estimatedMinutes: 10,
+      evidence: null,
     },
     {
       order: 2,
@@ -85,6 +86,7 @@ export const googleGuide: HandcraftedGuideInput = {
       evidence: {
         text: "General app verification for sensitive scopes: 2-4 weeks. Restricted scopes additionally require a CASA security assessment, commonly taking a few weeks to several months depending on app complexity, renewed every 12 months.",
         evidence: "REPORTED",
+        sourceUrl: null,
         lastChecked: CHECKED,
       },
     },
@@ -97,6 +99,7 @@ export const googleGuide: HandcraftedGuideInput = {
       notes: {
         text: "Requires app verification, typically 2-4 weeks, before use in production with External users.",
         evidence: "REPORTED",
+        sourceUrl: null,
         lastChecked: CHECKED,
       },
     },
@@ -119,6 +122,7 @@ export const googleGuide: HandcraftedGuideInput = {
       evidence: {
         text: "Security assessment timelines and the annual renewal requirement are reported consistently across third-party verification-process guides, though exact current cost and duration are not published by Google in a single authoritative number -- treat the \"few weeks to months\" estimate as directional.",
         evidence: "REPORTED",
+        sourceUrl: null,
         lastChecked: CHECKED,
       },
     },

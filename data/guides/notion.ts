@@ -58,6 +58,7 @@ export const notionGuide: HandcraftedGuideInput = {
       description: "This setting cannot be changed after creation, so decide upfront whether any Notion user can install it.",
       owner: "you_must_do",
       estimatedMinutes: 2,
+      evidence: null,
     },
     {
       order: 3,
@@ -65,6 +66,7 @@ export const notionGuide: HandcraftedGuideInput = {
       description: "The portal issues a CLIENT_ID and CLIENT_SECRET for exchanging authorization codes for tokens.",
       owner: "agent_can_assist",
       estimatedMinutes: 3,
+      evidence: null,
     },
     {
       order: 4,

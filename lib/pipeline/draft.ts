@@ -25,6 +25,11 @@ export async function draftGuide(
     generateObject({
       model: flashModel,
       schema: DraftedGuideSchema,
+      // Groq's strict structured-output mode (the reliable path) requires
+      // every property to be listed in the JSON schema's `required` array --
+      // which is why GuideSchema uses z.nullable() instead of z.optional()
+      // throughout (see lib/schema/guide.ts). With that in place, this can
+      // stay enabled.
       providerOptions: { groq: { structuredOutputs: true } },
       prompt: `Fill out an OAuth setup guide for "${resolved.appName}" using ONLY the research notes and source list below -- do not invent facts beyond what's stated here.
 
@@ -42,16 +47,19 @@ ${JSON.stringify(managedAuth)}
 Rules for every claim (prerequisites, step evidence, scope notes, blocker evidence):
 - evidence: "DOCUMENTED" only if a source URL above clearly supports it (cite it in sourceUrl).
 - evidence: "REPORTED" if it came from a community/secondary source in the notes, not an official doc.
-- evidence: "UNCERTAIN" if the research notes themselves expressed doubt or you cannot find support -- and in that case, omit sourceUrl.
+- evidence: "UNCERTAIN" if the research notes themselves expressed doubt or you cannot find support -- and in that case, set sourceUrl to null.
 - Never use "TESTED" -- this pipeline doesn't perform hands-on testing, only research.
 - Every evidence object needs lastChecked set to "${today()}".
+- Every field in the schema is required -- use null (not omission) for anything unknown: estimatedMinutes, a step's evidence, a blocker's workaround, sourceUrl, appUrl, providerDocsUrl, developerPortalUrl.
 
-appUrl: ${resolved.appUrl ?? "omit if unknown"}
-providerDocsUrl: ${resolved.providerDocsUrl ?? "omit if unknown"}
-developerPortalUrl: ${resolved.developerPortalUrl ?? "omit if unknown"}
+appUrl: ${resolved.appUrl ?? "null (unknown)"}
+providerDocsUrl: ${resolved.providerDocsUrl ?? "null (unknown)"}
+developerPortalUrl: ${resolved.developerPortalUrl ?? "null (unknown)"}
 appName: ${resolved.appName}
 
-For the verdict, lead the summary with the practical answer: how long until a working test connection, and how long until production approval including any review wait.`,
+For the verdict, lead the summary with the practical answer: how long until a working test connection, and how long until production approval including any review wait.
+
+Respond with a single JSON object matching the required schema -- no other text.`,
     })
   );
 

@@ -24,6 +24,7 @@ async function seedOne(input: HandcraftedGuideInput) {
     managedAuth,
     source: "handcrafted" as const,
     generatedAt: new Date().toISOString(),
+    pipelineVersion: null,
   };
   const guide: Guide = { ...withoutSummary, evidenceSummary: computeEvidenceSummary(withoutSummary) };
   const validated = GuideSchema.parse(guide);

@@ -50,6 +50,7 @@ export const spotifyGuide: HandcraftedGuideInput = {
       description: "Starts in Development Mode by default -- no waiting required.",
       owner: "you_must_do",
       estimatedMinutes: 5,
+      evidence: null,
     },
     {
       order: 2,
@@ -105,6 +106,7 @@ export const spotifyGuide: HandcraftedGuideInput = {
     },
     {
       reason: "Individual developers (not registered organizations) cannot apply for Extended Quota Mode at all as of May 2025.",
+      workaround: null,
       evidence: {
         text: "\"Spotify only accepts applications from organizations (not individuals)\" for quota extension as of May 15, 2025.",
         evidence: "DOCUMENTED",

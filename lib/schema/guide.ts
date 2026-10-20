@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// URL fields are plain z.string(), not z.string().url() -- Groq's strict
+// structured-output JSON schema compiler rejects the "format": "uri"
+// keyword that .url() adds. The Critic pipeline step already cross-checks
+// sourceUrl values against the known-good source list, so schema-level
+// format validation isn't load-bearing here.
+
 export const EvidenceLabel = z.enum([
   "TESTED",
   "DOCUMENTED",
@@ -11,8 +17,11 @@ export type EvidenceLabel = z.infer<typeof EvidenceLabel>;
 export const SourcedClaim = z.object({
   text: z.string(),
   evidence: EvidenceLabel,
-  // absent only when evidence === "UNCERTAIN" and no source could be found
-  sourceUrl: z.string().url().optional(),
+  // null only when evidence === "UNCERTAIN" and no source could be found.
+  // Nullable rather than optional: Groq's strict structured-output mode
+  // requires every property to be listed in the JSON schema's `required`
+  // array, which rules out z.optional() for any field the LLM fills in.
+  sourceUrl: z.string().nullable(),
   lastChecked: z.string(), // ISO date, e.g. "2026-10-21"
 });
 export type SourcedClaim = z.infer<typeof SourcedClaim>;
@@ -37,8 +46,8 @@ export const SetupStep = z.object({
   title: z.string(),
   description: z.string(),
   owner: StepOwner,
-  estimatedMinutes: z.number().int().optional(),
-  evidence: SourcedClaim.optional(),
+  estimatedMinutes: z.number().int().nullable(),
+  evidence: SourcedClaim.nullable(),
 });
 export type SetupStep = z.infer<typeof SetupStep>;
 
@@ -51,7 +60,7 @@ export type ScopeTier = z.infer<typeof ScopeTier>;
 
 export const Blocker = z.object({
   reason: z.string(),
-  workaround: z.string().optional(),
+  workaround: z.string().nullable(),
   evidence: SourcedClaim,
 });
 export type Blocker = z.infer<typeof Blocker>;
@@ -60,18 +69,18 @@ export const ManagedAuthStatus = z.object({
   checked: z.boolean(),
   // null = Composio lookup ran but could not determine availability
   available: z.boolean().nullable(),
-  authScheme: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
-  note: z.string().optional(),
+  authScheme: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  note: z.string().nullable(),
 });
 export type ManagedAuthStatus = z.infer<typeof ManagedAuthStatus>;
 
 export const GuideSchema = z.object({
   slug: z.string(),
   appName: z.string(),
-  appUrl: z.string().url().optional(),
-  providerDocsUrl: z.string().url().optional(),
-  developerPortalUrl: z.string().url().optional(),
+  appUrl: z.string().nullable(),
+  providerDocsUrl: z.string().nullable(),
+  developerPortalUrl: z.string().nullable(),
 
   verdict: z.object({
     difficultyTier: DifficultyTier,
@@ -95,7 +104,7 @@ export const GuideSchema = z.object({
 
   source: z.enum(["handcrafted", "generated"]),
   generatedAt: z.string(),
-  pipelineVersion: z.string().optional(),
+  pipelineVersion: z.string().nullable(),
 });
 export type Guide = z.infer<typeof GuideSchema>;
 

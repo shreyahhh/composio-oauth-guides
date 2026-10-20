@@ -59,6 +59,7 @@ export const githubGuide: HandcraftedGuideInput = {
       description: "Click \"Register application,\" then generate a client secret on the resulting app page. Never share this secret.",
       owner: "you_must_do",
       estimatedMinutes: 2,
+      evidence: null,
     },
     {
       order: 4,
@@ -66,6 +67,7 @@ export const githubGuide: HandcraftedGuideInput = {
       description: "Drive a test user through the /login/oauth/authorize URL and exchange the returned code for a token.",
       owner: "agent_can_do",
       estimatedMinutes: 5,
+      evidence: null,
     },
   ],
 

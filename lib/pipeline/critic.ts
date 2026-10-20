@@ -39,7 +39,6 @@ export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[]): 
     generateObject({
       model: flashModel,
       schema: CriticResultSchema,
-      providerOptions: { groq: { structuredOutputs: true } },
       prompt: `You are auditing an OAuth setup guide for fabricated or unsupported claims before it's published.
 
 VALID SOURCE URLS (a claim's sourceUrl must be one of these, or very close to one of these, to count as supported):
@@ -53,7 +52,9 @@ For each claim, decide if its evidence label is justified:
 - A claim with no sourceUrl, or a sourceUrl not in the valid list, cannot be DOCUMENTED or REPORTED -- it must be downgraded to UNCERTAIN.
 - Flag any claim that looks fabricated, overly specific without support (e.g. a suspiciously precise time estimate with no source), or that contradicts another claim in the list.
 
-Return ONLY the claims that need to change, as downgrades with the exact original claimText, the corrected newLabel, and a short reason. If every claim is already justified, return an empty array.`,
+Return ONLY the claims that need to change, as downgrades with the exact original claimText, the corrected newLabel, and a short reason. If every claim is already justified, return an empty array.
+
+Respond with a single JSON object matching the required schema -- no other text.`,
     })
   );
 
@@ -63,7 +64,7 @@ Return ONLY the claims that need to change, as downgrades with the exact origina
     const d = downgradeMap.get(claim.text);
     if (!d) return claim;
     const next: SourcedClaim = { ...claim, evidence: d.newLabel };
-    if (d.newLabel === "UNCERTAIN") delete next.sourceUrl;
+    if (d.newLabel === "UNCERTAIN") next.sourceUrl = null;
     return next;
   }
 

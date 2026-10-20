@@ -31,13 +31,14 @@ export async function checkManagedAuth(toolkitSlug: string): Promise<ManagedAuth
         note:
           schemes.length > oauthSchemes.length
             ? `Composio manages ${oauthSchemes.join(", ")} for this toolkit; other auth schemes it supports are not managed.`
-            : undefined,
+            : null,
       };
     }
 
     return {
       checked: true,
       available: false,
+      authScheme: null,
       sourceUrl: MANAGED_AUTH_DOCS_URL,
       note:
         schemes.length > 0
@@ -49,6 +50,7 @@ export async function checkManagedAuth(toolkitSlug: string): Promise<ManagedAuth
     return {
       checked: false,
       available: null,
+      authScheme: null,
       sourceUrl: MANAGED_AUTH_DOCS_URL,
       note: "Could not look up this toolkit via the Composio SDK; see the managed-auth docs directly.",
     };
