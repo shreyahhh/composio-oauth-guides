@@ -3,7 +3,7 @@ import { APICallError } from "ai";
 export class RateLimitedError extends Error {
   constructor() {
     super(
-      "The free Gemini API is rate-limited right now. This happens because Google no longer publishes a fixed free-tier quota -- it varies by project and resets daily. Please try again in a minute."
+      "The free Groq API is rate-limited right now (free tier is rate-limited, not credit-limited). Please try again in a minute."
     );
     this.name = "RateLimitedError";
   }

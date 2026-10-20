@@ -23,7 +23,7 @@ in real time, and an honest evidence trail on every claim it makes.
   **not hands-on tested**. See "Limitations" below for exactly what that
   means and what you should test yourself before relying on it.
 - **A live generation pipeline** (`lib/pipeline/`): submit any app name or
-  URL and watch it resolve the provider, research it (grounded web search +
+  URL and watch it resolve the provider, research it (real Tavily web search +
   reading the official docs directly), check Composio for a managed-auth
   shortcut, draft a guide against a shared schema, and critique its own
   claims before saving -- all streamed step by step.
@@ -43,11 +43,16 @@ in real time, and an honest evidence trail on every claim it makes.
 
 2. **Environment variables** -- copy `.env.example` to `.env.local` and fill in:
    - `DATABASE_URL` -- a Neon Postgres connection string (free tier; see
-     neon.tech dashboard -> your project -> Connection Details)
-   - `GEMINI_API_KEY` -- from [Google AI Studio](https://aistudio.google.com/apikey)
-     (free tier)
-   - `COMPOSIO_API_KEY` -- from [app.composio.dev](https://app.composio.dev) (free plan)
-   - `GEMINI_MODEL` -- optional, defaults to `gemini-flash-latest` (see
+     the Neon console -> your project -> "Connect")
+   - `GROQ_API_KEY` -- from [console.groq.com/keys](https://console.groq.com/keys)
+     (free tier, rate-limited not credit-limited, no card ever required)
+   - `TAVILY_API_KEY` -- from [app.tavily.com](https://app.tavily.com) (free
+     tier: 1,000 search credits/month, no card required)
+   - `COMPOSIO_API_KEY` -- from [app.composio.dev](https://app.composio.dev)
+     (free plan). **Switch the dashboard to "Platform" mode first** (not
+     "For You"), then Settings -> Project Settings -> API Keys -- the "For
+     You" mode's key is an MCP consumer key and won't authenticate the SDK.
+   - `GROQ_MODEL` -- optional, defaults to `llama-3.3-70b-versatile` (see
      "Key decisions" below for why)
 
    **Never commit `.env.local`.** Only `.env.example` (with empty values) is
@@ -67,7 +72,7 @@ in real time, and an honest evidence trail on every claim it makes.
    ```
 
 5. **Deploy** -- push to GitHub, import into Vercel (Hobby plan is enough),
-   set the same three env vars there, and it's live. No paid plan or credit
+   set the same four env vars there, and it's live. No paid plan or credit
    card required anywhere in this stack.
 
 6. **(Optional) Generate the Evidence & Verification comparisons**
@@ -90,24 +95,50 @@ in real time, and an honest evidence trail on every claim it makes.
 
 ## Key decisions
 
-- **Research and Draft are separate LLM calls, by design, not by accident.**
-  The Vercel AI SDK's Google provider cannot combine Search grounding with
-  structured-output mode in a single call ([vercel/ai#11599](https://github.com/vercel/ai/issues/11599)
-  at time of writing). So Research runs grounded and produces free text +
-  source URLs; Draft runs ungrounded and reorganizes that text into the
-  schema. This also happens to be exactly the pipeline shape the assignment
-  itself suggested.
+- **Groq + Tavily, not Gemini, despite the original plan.** Gemini was the
+  original choice, and the code path was built and working end-to-end
+  against it. In practice, a fresh Google AI Studio key hit "Your
+  prepayment credits are depleted" on its very first call -- a
+  well-documented 2025/2026 issue where Google AI Studio now requires an
+  actual prepay wallet deposit to "activate" the free tier, not just a
+  linked payment method. That's a real cost/friction the assignment
+  explicitly rules out ("everything must be free, no paid plans, no credit
+  card"), so the LLM layer was switched to **Groq** (free tier is
+  rate-limited, not credit-limited -- no card requirement at any point,
+  confirmed on their own pricing docs) and web search was switched to
+  **Tavily** (free tier: 1,000 credits/month, no card, purpose-built for
+  exactly this "give an LLM real search results" use case). This is the
+  single biggest deviation from the plan as originally approved, and it's
+  the kind of thing "verify current facts before finalizing" is meant to
+  catch -- a provider's documented free tier and its actual day-one
+  behavior aren't always the same thing.
+- **Grounding is manual (Tavily results in the prompt), not a provider
+  tool.** Groq's own built-in browser-search tool exists but is a paid
+  add-on (and even its "currently free during beta" variant is only
+  free-with-an-asterisk and restricted to two specific models) -- not a
+  stable free-tier guarantee worth building on. Instead, Resolve and
+  Research each run a real Tavily search first, then hand the model the
+  actual result URLs and snippets and forbid it from citing anything not
+  in that list. This also means the source list Draft/Critic check claims
+  against comes from Tavily directly, not from the model's self-report --
+  arguably more reliable than a provider's own grounding-metadata.
+- **Research and Draft are still separate LLM calls**, now for a cleaner
+  reason: Research needs the search results in its prompt (plain text),
+  while Draft needs structured output -- keeping them separate keeps each
+  prompt focused, independent of whether a given provider can combine the
+  two.
 - **A dedicated Critic pass**, not just prompting Draft to "be careful."
   It's a second structured-output call that checks every claim against the
   actual list of source URLs collected during Research and downgrades
   anything unsupported to `UNCERTAIN` before the guide is ever saved. This
   is the guardrail against a confident-but-fabricated guide.
-- **`gemini-flash-latest`, not a pinned model id.** Google no longer
-  publishes a universal free-tier rate-limit table (limits are
-  project-specific, visible only in your own AI Studio console) and ships
-  new model generations fast -- a pinned id risks going stale. The floating
-  alias trades a small amount of reproducibility for not breaking later.
-  Override via `GEMINI_MODEL` if you want to pin one.
+- **`llama-3.3-70b-versatile`, not a Gemini model.** Chosen as Groq's
+  solid general-purpose free-tier model with a large context window.
+  `providerOptions: { groq: { structuredOutputs: true } }` is set on the
+  Draft and Critic calls to use Groq's native structured-output mode
+  rather than a looser JSON-in-prompt fallback. Override via `GROQ_MODEL`;
+  check console.groq.com/docs/models for current options and per-model
+  rate limits, which vary by model and change often.
 - **Composio's managed-auth check is a live SDK call, not a guess.** Both
   the seed script and the live pipeline call
   `composio.toolkits.get(slug)` and read `composioManagedAuthSchemes`,
@@ -141,11 +172,9 @@ in real time, and an honest evidence trail on every claim it makes.
   have.
 - **Free-tier numbers that could not be verified with confidence** (flagged
   rather than guessed):
-  - Exact Gemini RPM/RPD/TPM for the free tier -- Google states these are
-    project-specific and no longer published as a universal table. Check
-    your own AI Studio console before relying on a number.
-  - Exact free Search-grounding daily quota (conflicting reports of 500 vs.
-    1,500 requests/day, shared with Flash-Lite models).
+  - Exact Groq per-model RPM/RPD/TPM -- these vary by model and change
+    often; check console.groq.com/docs/rate-limits for your account's
+    current numbers before relying on one.
   - Neon's cold-start latency after its 5-minute autosuspend (not
     officially documented; commonly reported, not confirmed, as fast).
   - Whether a long-idle free Neon project risks archival -- not addressed

@@ -8,10 +8,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Converts the Research step's free-text narrative + source list into the
- * guide schema. Deliberately NOT grounded (the Google provider can't combine
- * search grounding with structured output in one call) -- this call only
- * reorganizes claims the Research step already made, it doesn't look anything
- * up on its own.
+ * guide schema. This call doesn't search or look anything up on its own --
+ * it only reorganizes claims the Research step already made, against the
+ * source list Research already collected via Tavily/Readability.
  */
 export async function draftGuide(
   resolved: ResolvedApp,
@@ -26,6 +25,7 @@ export async function draftGuide(
     generateObject({
       model: flashModel,
       schema: DraftedGuideSchema,
+      providerOptions: { groq: { structuredOutputs: true } },
       prompt: `Fill out an OAuth setup guide for "${resolved.appName}" using ONLY the research notes and source list below -- do not invent facts beyond what's stated here.
 
 RESEARCH NOTES:

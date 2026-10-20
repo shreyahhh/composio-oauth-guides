@@ -39,6 +39,7 @@ export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[]): 
     generateObject({
       model: flashModel,
       schema: CriticResultSchema,
+      providerOptions: { groq: { structuredOutputs: true } },
       prompt: `You are auditing an OAuth setup guide for fabricated or unsupported claims before it's published.
 
 VALID SOURCE URLS (a claim's sourceUrl must be one of these, or very close to one of these, to count as supported):

@@ -13,7 +13,7 @@
     "setup-attempt:github": "tsx scripts/playwright-setup-attempt.ts"
   },
   "dependencies": {
-    "@ai-sdk/google": "^4.0.101",
+    "@ai-sdk/groq": "^4.0.66",
     "@base-ui/react": "^1.9.0",
     "@composio/core": "^0.25.0",
     "@mozilla/readability": "^0.6.0",
