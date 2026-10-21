@@ -9,7 +9,7 @@ AuthPilot is a small, working tool for that: a library of verdict-first
 guides, a live agent pipeline that investigates and writes a new guide for
 any app in real time, and an honest evidence trail on every claim it makes.
 
-- **Live app:** _fill in your Vercel URL once deployed_ -- a simple landing
+- **Live app:** https://oauth-guides-omega.vercel.app/ -- a simple landing
   page at `/`; the dashboard (library + live generation) lives at `/dashboard`
 - **Evidence & Verification:** `/evidence`
 - **Agent-readable index:** `/llms.txt`
@@ -213,10 +213,6 @@ any app in real time, and an honest evidence trail on every claim it makes.
   - Whether a long-idle free Neon project risks archival -- not addressed
     in the docs found; worth checking the Neon dashboard before a review
     call happening weeks after you stop actively using the project.
-- **The Evidence & Verification page covers 2 apps (GitHub, Google), not
-  the whole library** -- chosen as the easy/hard contrast pair, not
-  because the other two are less interesting. Scaling this comparison to
-  every library app is the natural next step.
 - **Composio's `composioManagedAuthSchemes` is toolkit-level.** When a
   toolkit supports multiple auth schemes with mixed managed status, the
   guide surfaces the specific scheme(s) Composio manages, but a developer
@@ -231,11 +227,29 @@ any app in real time, and an honest evidence trail on every claim it makes.
 
 ## Evidence summary
 
-See `/evidence` for the live comparison. In short: run
-`npm run evidence:generate` once credentials are set, then fill in
-`data/evidence-findings.ts` with what the agent got right, wrong, or
-missed against the verified GitHub and Google guides, and this section
-should summarize those findings in 2-3 sentences before submission.
+See `/evidence` for the full claim-by-claim comparison, run on 2026-10-21 via
+the live pipeline against all four library apps (GitHub, Notion, Spotify,
+Google) and diffed against the hand-verified guides. The headline finding:
+the agent is reliably good at the mechanical "how do I click through this"
+steps and reliably weak at surfacing the one gate, cap, or eligibility rule
+that actually determines how hard a provider is -- it missed Spotify's
+5-user Development Mode cap entirely, and separately missed that Extended
+Quota Mode has been organization-only since May 2025. (Spotify's quota
+numbers are demonstrably easy to get wrong even with care: this repo's own
+handcrafted guide documents a different correction on the same app -- its
+file comment records an earlier research pass assuming a 25-user cap before
+the actual 5-user figure was confirmed.) It also missed Notion's Integration
+Gallery review window, and mislabeled Google's overall
+difficulty as self-serve despite generating its own step describing a
+multi-week review. It also attached a hallucinated source to a real GitHub
+claim (a Norwegian BankID blog cited as evidence for GitHub token exchange)
+and favored a third-party blog over Notion's own docs -- the Critic confirms
+a cited URL appeared in search results, not that it's specific to the claim
+it's attached to. Not uniformly worse, though: its Google step-by-step
+breakdown was more granular than the handcrafted version, and it correctly
+labeled a Spotify forum post REPORTED rather than DOCUMENTED. Net takeaway:
+trust the live pipeline for mechanics, keep a human or Critic pass on the
+difficulty-tier and "what's the hardest part" judgment calls specifically.
 
 ## What's next
 

@@ -6,6 +6,8 @@ import { runPipeline } from "@/lib/pipeline/run";
 const TARGETS = [
   { input: "GitHub", slugOverride: "github-generated" },
   { input: "Google", slugOverride: "google-generated" },
+  { input: "Notion", slugOverride: "notion-generated" },
+  { input: "Spotify", slugOverride: "spotify-generated" },
 ];
 
 async function main() {
