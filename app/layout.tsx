@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { DoorOverlay } from "@/components/transition/door-overlay";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,7 +21,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        {children}
+        <DoorOverlay />
+      </body>
     </html>
   );
 }

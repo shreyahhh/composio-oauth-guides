@@ -3,6 +3,7 @@ import { Library, Sparkles, ShieldCheck, FileCode } from "lucide-react";
 import { listGuides } from "@/lib/db/queries";
 import { GuideSchema } from "@/lib/schema/guide";
 import { NavLink } from "./nav-link";
+import { GuideTabs } from "./guide-tabs";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="px-2.5 pt-4 pb-1 text-[11px] font-semibold tracking-wide text-sidebar-foreground/50 uppercase">{children}</div>;
@@ -40,31 +41,7 @@ export async function Sidebar() {
           </NavLink>
         </div>
 
-        {verified.length > 0 && (
-          <>
-            <SectionLabel>Verified guides</SectionLabel>
-            <div className="space-y-0.5">
-              {verified.map((g) => (
-                <NavLink key={g.slug} href={`/guides/${g.slug}`}>
-                  {g.appName}
-                </NavLink>
-              ))}
-            </div>
-          </>
-        )}
-
-        {generated.length > 0 && (
-          <>
-            <SectionLabel>Generated</SectionLabel>
-            <div className="space-y-0.5">
-              {generated.map((g) => (
-                <NavLink key={g.slug} href={`/guides/${g.slug}`}>
-                  {g.appName}
-                </NavLink>
-              ))}
-            </div>
-          </>
-        )}
+        <GuideTabs verified={verified} generated={generated} />
       </nav>
 
       <div className="border-t border-sidebar-border px-4 py-3 text-xs text-sidebar-foreground/60">

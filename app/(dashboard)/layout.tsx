@@ -1,10 +1,11 @@
 import { Sidebar } from "@/components/layout/sidebar";
+import { DashboardMain } from "@/components/layout/dashboard-main";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-full flex-row">
       <Sidebar />
-      <main className="h-screen flex-1 overflow-y-auto">{children}</main>
+      <DashboardMain>{children}</DashboardMain>
     </div>
   );
 }
