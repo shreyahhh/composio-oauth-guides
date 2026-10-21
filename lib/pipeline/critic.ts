@@ -2,6 +2,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { flashModel } from "@/lib/ai/model";
 import { withBackoff } from "@/lib/ai/retry";
+import { tavilySearch } from "@/lib/search/tavily";
 import { EvidenceLabel, type SourcedClaim, type DraftedGuide } from "@/lib/schema/guide";
 
 const CriticResultSchema = z.object({
@@ -23,22 +24,80 @@ function collectClaims(guide: DraftedGuide): SourcedClaim[] {
   ];
 }
 
-export type CriticOutcome = { guide: DraftedGuide; downgrades: Array<{ claimText: string; newLabel: string; reason: string }> };
+type Downgrade = { claimText: string; newLabel: string; reason: string; sourceUrl?: string };
+
+export type CriticOutcome = { guide: DraftedGuide; downgrades: Downgrade[] };
+
+// Caps on the extra verification work so a guide with many weak claims can't
+// blow the Tavily free-tier budget or the Vercel 300s function ceiling: at
+// most this many claims get the retry treatment, each getting at most this
+// many search attempts before we accept UNCERTAIN.
+const MAX_CLAIMS_TO_RECOVER = 3;
+const MAX_ATTEMPTS_PER_CLAIM = 3;
+
+function isLikelyOfficialDocs(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return /(^|\.)docs\.|developer\.|developers\./.test(host);
+  } catch {
+    return false;
+  }
+}
+
+function retryQuery(appName: string, claimText: string, attempt: number): string {
+  if (attempt === 0) return `${appName} ${claimText}`;
+  if (attempt === 1) return `${appName} official documentation ${claimText}`;
+  return `"${appName}" developer docs ${claimText}`;
+}
+
+/**
+ * Before accepting a claim as UNCERTAIN, try a couple more targeted
+ * searches -- the model's own source list might just be incomplete for
+ * this specific claim, not the claim itself being genuinely unverifiable.
+ * Only called for claims the critic flagged UNCERTAIN, capped to keep
+ * search-API usage and runtime bounded.
+ */
+async function tryRecoverUncertainClaims(
+  downgrades: Downgrade[],
+  appName: string,
+  alreadyTriedUrls: string[]
+): Promise<Downgrade[]> {
+  const toUpgrade = downgrades.filter((d) => d.newLabel === "UNCERTAIN").slice(0, MAX_CLAIMS_TO_RECOVER);
+  const recoveredByClaimText = new Map<string, Downgrade>();
+
+  for (const d of toUpgrade) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_CLAIM; attempt++) {
+      const results = await tavilySearch(retryQuery(appName, d.claimText, attempt), 3);
+      const match = results.find((r) => !alreadyTriedUrls.includes(r.url));
+      if (match) {
+        recoveredByClaimText.set(d.claimText, {
+          claimText: d.claimText,
+          newLabel: isLikelyOfficialDocs(match.url) ? "DOCUMENTED" : "REPORTED",
+          reason: `Recovered via an additional search after the first pass found no source.`,
+          sourceUrl: match.url,
+        });
+        break;
+      }
+    }
+  }
+
+  return downgrades.map((d) => recoveredByClaimText.get(d.claimText) ?? d);
+}
 
 /**
  * Second LLM pass: checks every claim actually has a supporting source,
- * downgrading anything unsupported to UNCERTAIN before save. This is the
- * guardrail against a confident-but-fabricated guide -- no claim survives
- * into the saved guide without either a real source or an honest UNCERTAIN
- * label.
+ * downgrading anything unsupported to UNCERTAIN -- but before finalizing an
+ * UNCERTAIN downgrade, makes a bounded effort to find a real source via
+ * fresh, targeted web searches rather than giving up on the first miss.
+ * This is the guardrail against a confident-but-fabricated guide AND
+ * against a guide that's needlessly vague when a source was findable.
  */
-export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[]): Promise<CriticOutcome> {
+export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[], appName: string): Promise<CriticOutcome> {
   const claims = collectClaims(guide);
 
   const { object } = await withBackoff(() =>
     generateObject({
       model: flashModel,
-      maxRetries: 0,
       schema: CriticResultSchema,
       prompt: `You are auditing an OAuth setup guide for fabricated or unsupported claims before it's published.
 
@@ -59,13 +118,15 @@ Respond with a single JSON object matching the required schema -- no other text.
     })
   );
 
-  const downgradeMap = new Map(object.downgrades.map((d) => [d.claimText, d]));
+  const finalDowngrades = await tryRecoverUncertainClaims(object.downgrades, appName, sourceUrls);
+
+  const downgradeMap = new Map(finalDowngrades.map((d) => [d.claimText, d]));
 
   function applyTo(claim: SourcedClaim): SourcedClaim {
     const d = downgradeMap.get(claim.text);
     if (!d) return claim;
-    const next: SourcedClaim = { ...claim, evidence: d.newLabel };
-    if (d.newLabel === "UNCERTAIN") next.sourceUrl = null;
+    const next: SourcedClaim = { ...claim, evidence: d.newLabel as SourcedClaim["evidence"] };
+    next.sourceUrl = d.newLabel === "UNCERTAIN" ? null : (d.sourceUrl ?? claim.sourceUrl);
     return next;
   }
 
@@ -77,5 +138,5 @@ Respond with a single JSON object matching the required schema -- no other text.
     blockers: guide.blockers.map((b) => ({ ...b, evidence: applyTo(b.evidence) })),
   };
 
-  return { guide: patched, downgrades: object.downgrades };
+  return { guide: patched, downgrades: finalDowngrades };
 }

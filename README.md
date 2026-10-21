@@ -132,6 +132,15 @@ in real time, and an honest evidence trail on every claim it makes.
   actual list of source URLs collected during Research and downgrades
   anything unsupported to `UNCERTAIN` before the guide is ever saved. This
   is the guardrail against a confident-but-fabricated guide.
+- **UNCERTAIN isn't the final answer -- it's a prompt to try harder, within
+  limits.** Before accepting a claim as UNCERTAIN, the Critic step runs up
+  to 3 additional, differently-worded Tavily searches for it (capped at 3
+  claims per guide, to bound search-API usage and runtime): the Draft
+  step's source list might just be incomplete for that one claim, not the
+  claim itself being unverifiable. A recovered source is labeled
+  `DOCUMENTED` if it looks like an official docs domain or `REPORTED`
+  otherwise. Verified live: generating a guide for Trello recovered real
+  sources for 2 claims that would otherwise have shipped as UNCERTAIN.
 - **`openai/gpt-oss-120b`, not a Gemini model.** Groq's catalog turns over
   fast enough that the first model chosen here (`llama-3.3-70b-versatile`)
   was already retired by the time of testing -- confirmed by querying

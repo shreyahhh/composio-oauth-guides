@@ -67,15 +67,18 @@ export async function runPipeline({ input, slugOverride, onEvent }: RunOptions):
 
   onEvent({ type: "step_start", step: "critic", label: "Checking every claim has a source..." });
   const sourceUrls = research.sources.map((s) => s.url);
-  const { guide: critiqued, downgrades } = await critiqueGuide(drafted, sourceUrls);
-  onEvent({
-    type: "step_done",
-    step: "critic",
-    label:
-      downgrades.length > 0
-        ? `Downgraded ${downgrades.length} unsupported claim(s) to UNCERTAIN`
-        : "Every claim checks out",
-  });
+  const { guide: critiqued, downgrades } = await critiqueGuide(drafted, sourceUrls, resolved.appName);
+  const recoveredCount = downgrades.filter((d) => d.newLabel !== "UNCERTAIN").length;
+  const uncertainCount = downgrades.filter((d) => d.newLabel === "UNCERTAIN").length;
+  let criticLabel = "Every claim checks out";
+  if (recoveredCount > 0 && uncertainCount > 0) {
+    criticLabel = `Found a source for ${recoveredCount} claim(s); ${uncertainCount} remain UNCERTAIN`;
+  } else if (recoveredCount > 0) {
+    criticLabel = `Found a source for ${recoveredCount} claim(s) via extra search`;
+  } else if (uncertainCount > 0) {
+    criticLabel = `${uncertainCount} unsupported claim(s) marked UNCERTAIN after extra search attempts`;
+  }
+  onEvent({ type: "step_done", step: "critic", label: criticLabel });
 
   onEvent({ type: "step_start", step: "save", label: "Saving guide..." });
   const guideWithoutSummary = {
