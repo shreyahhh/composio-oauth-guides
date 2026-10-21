@@ -38,12 +38,32 @@ export function GenerateForm() {
     setFatalError(null);
     setCached(null);
 
+    let sawTerminalEvent = false;
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input, force }),
       });
+
+      // The route only sends a 4xx for a missing input; anything else non-OK
+      // (e.g. an unhandled exception before the stream starts) means there's
+      // no NDJSON body to read, just a bare error response -- surface that
+      // directly instead of silently draining an empty/unparseable stream,
+      // which previously left the UI stuck on "Generating..." forever.
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let message = text;
+        try {
+          message = JSON.parse(text).error ?? text;
+        } catch {
+          // not JSON -- use the raw text (or fall back below if empty)
+        }
+        setFatalError(message || `Request failed (${res.status}). Please try again.`);
+        setRunning(false);
+        return;
+      }
 
       if (!res.body) throw new Error("No response body");
       const reader = res.body.getReader();
@@ -59,8 +79,18 @@ export function GenerateForm() {
         for (const part of parts) {
           if (!part.trim()) continue;
           const event: StreamedEvent = JSON.parse(part);
+          if (event.type === "cached" || event.type === "error" || event.type === "done") sawTerminalEvent = true;
           handleEvent(event);
         }
+      }
+
+      // Defensive fallback: the stream ended (e.g. the connection was cut,
+      // or the server crashed mid-response) without ever sending a cached/
+      // error/done event, which would otherwise leave `running` stuck true
+      // forever with no feedback.
+      if (!sawTerminalEvent) {
+        setFatalError("The connection ended unexpectedly before the guide finished. Please try again.");
+        setRunning(false);
       }
     } catch {
       setFatalError("Connection lost -- please try again.");

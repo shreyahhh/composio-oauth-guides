@@ -22,9 +22,25 @@ export async function POST(request: Request) {
   // Calendar"). A different wording of the same app may still re-run the
   // pipeline and overwrite the resolved slug's row (see onConflictDoUpdate
   // in runPipeline) -- this pre-check only short-circuits exact repeats.
+  //
+  // Wrapped in try/catch so a transient DB hiccup here (e.g. a cold-start
+  // connection error) can't crash the route with an unhandled exception --
+  // that previously surfaced to the client as a bare, empty-bodied 500,
+  // which the generate-form client had no way to parse into a message and
+  // left stuck on "Generating..." forever. Every failure path should return
+  // a real JSON body the client can show the user.
   const quickSlug = slugify(input);
   if (!force) {
-    const existing = await db.query.guides.findFirst({ where: eq(guides.slug, quickSlug) });
+    let existing: { slug: string; updatedAt: Date } | undefined;
+    try {
+      existing = await db.query.guides.findFirst({ where: eq(guides.slug, quickSlug) });
+    } catch (err) {
+      console.error(err);
+      return Response.json(
+        { error: "Couldn't check for an existing guide right now. Please try again." },
+        { status: 503 }
+      );
+    }
     if (existing) {
       const stream = new ReadableStream({
         start(controller) {
