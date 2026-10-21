@@ -20,7 +20,7 @@ export type ResolvedApp = {
   providerDocsUrl?: string;
 };
 
-export type ResearchSource = { url: string; title?: string };
+export type ResearchSource = { url: string; title?: string; content?: string };
 
 export type ResearchResult = {
   narrative: string;

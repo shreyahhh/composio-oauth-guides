@@ -13,6 +13,11 @@ import type { ResolvedApp, ResearchResult, ResearchSource } from "./types";
 // seconds, not a 1-4s exponential backoff, to reset).
 const MAX_DOC_CHARS = 4000;
 const MAX_NARRATIVE_CHARS = 4000;
+// Short enough that threading all ~10 sources' content into the Critic's
+// prompt later (lib/pipeline/critic.ts) stays within the same per-minute
+// token budget -- just enough for the Critic to judge topical relevance,
+// not a full re-read of each page.
+const MAX_SOURCE_SNIPPET_CHARS = 300;
 
 /**
  * Reads the official docs page directly (if we found one) via Readability,
@@ -51,10 +56,16 @@ export async function researchApp(resolved: ResolvedApp): Promise<ResearchResult
 
   const sources: ResearchSource[] = [];
   if (resolved.providerDocsUrl && officialDocsText) {
-    sources.push({ url: resolved.providerDocsUrl, title: "Official docs" });
+    sources.push({
+      url: resolved.providerDocsUrl,
+      title: "Official docs",
+      content: officialDocsText.slice(0, MAX_SOURCE_SNIPPET_CHARS),
+    });
   }
   for (const r of [...searchResults, ...gateResults]) {
-    if (!sources.some((s) => s.url === r.url)) sources.push({ url: r.url, title: r.title });
+    if (!sources.some((s) => s.url === r.url)) {
+      sources.push({ url: r.url, title: r.title, content: r.content.slice(0, MAX_SOURCE_SNIPPET_CHARS) });
+    }
   }
 
   const officialDocsBlock = officialDocsText

@@ -66,8 +66,7 @@ export async function runPipeline({ input, slugOverride, onEvent }: RunOptions):
   onEvent({ type: "step_done", step: "draft", label: "Draft complete" });
 
   onEvent({ type: "step_start", step: "critic", label: "Checking every claim has a source..." });
-  const sourceUrls = research.sources.map((s) => s.url);
-  const { guide: critiqued, downgrades } = await critiqueGuide(drafted, sourceUrls, resolved.appName);
+  const { guide: critiqued, downgrades } = await critiqueGuide(drafted, research.sources, resolved.appName);
   const recoveredCount = downgrades.filter((d) => d.newLabel !== "UNCERTAIN").length;
   const uncertainCount = downgrades.filter((d) => d.newLabel === "UNCERTAIN").length;
   let criticLabel = "Every claim checks out";

@@ -4,6 +4,7 @@ import { flashModel } from "@/lib/ai/model";
 import { withBackoff } from "@/lib/ai/retry";
 import { tavilySearch } from "@/lib/search/tavily";
 import { EvidenceLabel, type SourcedClaim, type DraftedGuide } from "@/lib/schema/guide";
+import type { ResearchSource } from "./types";
 
 const CriticResultSchema = z.object({
   downgrades: z.array(
@@ -44,6 +45,21 @@ function isLikelyOfficialDocs(url: string): boolean {
   }
 }
 
+// A domain pattern alone isn't enough -- evidence-findings.ts caught this
+// exact gap recovering a claim about GitHub's token exchange with a
+// Norwegian BankID blog post, because the recovery search just grabbed the
+// first unused result regardless of what it was actually about. Requiring
+// the app's own name to appear in the result's title/snippet is a cheap but
+// effective check specifically for "wrong provider" sources -- OAuth
+// explainer pages share generic vocabulary (token, scope, authorization)
+// across completely unrelated providers, so a keyword-overlap check on the
+// claim text alone wouldn't have caught this; checking for the app name
+// does, because an off-topic page essentially never happens to mention it.
+function mentionsApp(result: { title: string; content: string }, appName: string): boolean {
+  const haystack = `${result.title} ${result.content}`.toLowerCase();
+  return haystack.includes(appName.toLowerCase());
+}
+
 function retryQuery(appName: string, claimText: string, attempt: number): string {
   if (attempt === 0) return `${appName} ${claimText}`;
   if (attempt === 1) return `${appName} official documentation ${claimText}`;
@@ -55,7 +71,11 @@ function retryQuery(appName: string, claimText: string, attempt: number): string
  * searches -- the model's own source list might just be incomplete for
  * this specific claim, not the claim itself being genuinely unverifiable.
  * Only called for claims the critic flagged UNCERTAIN, capped to keep
- * search-API usage and runtime bounded.
+ * search-API usage and runtime bounded. A candidate result is only accepted
+ * if it actually mentions the app being documented -- otherwise it's
+ * skipped and the next search attempt (or eventually UNCERTAIN) is used
+ * instead of attaching an off-topic source just because it was the first
+ * unused result.
  */
 async function tryRecoverUncertainClaims(
   downgrades: Downgrade[],
@@ -68,7 +88,7 @@ async function tryRecoverUncertainClaims(
   for (const d of toUpgrade) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_CLAIM; attempt++) {
       const results = await tavilySearch(retryQuery(appName, d.claimText, attempt), 3);
-      const match = results.find((r) => !alreadyTriedUrls.includes(r.url));
+      const match = results.find((r) => !alreadyTriedUrls.includes(r.url) && mentionsApp(r, appName));
       if (match) {
         recoveredByClaimText.set(d.claimText, {
           claimText: d.claimText,
@@ -92,23 +112,31 @@ async function tryRecoverUncertainClaims(
  * This is the guardrail against a confident-but-fabricated guide AND
  * against a guide that's needlessly vague when a source was findable.
  */
-export async function critiqueGuide(guide: DraftedGuide, sourceUrls: string[], appName: string): Promise<CriticOutcome> {
+export async function critiqueGuide(guide: DraftedGuide, sources: ResearchSource[], appName: string): Promise<CriticOutcome> {
   const claims = collectClaims(guide);
+  const sourceUrls = sources.map((s) => s.url);
 
   const { object } = await withBackoff(() =>
     generateObject({
       model: flashModel,
       schema: CriticResultSchema,
+      // Each source includes a content snippet, not just a bare URL -- a
+      // URL string alone gives no way to judge whether it actually supports
+      // a specific claim (evidence-findings.ts found claims citing a page
+      // that was real and in-scope but didn't substantiate that particular
+      // claim). Judging against actual text is still imperfect -- OAuth
+      // explainer pages share generic vocabulary across unrelated providers
+      // -- but it's strictly more grounded than judging a bare URL string.
       prompt: `You are auditing an OAuth setup guide for fabricated or unsupported claims before it's published.
 
-VALID SOURCE URLS (a claim's sourceUrl must be one of these, or very close to one of these, to count as supported):
-${sourceUrls.map((u) => `- ${u}`).join("\n") || "(none)"}
+VALID SOURCES (a claim's sourceUrl must match one of these URLs; use the snippet to judge whether it actually supports the specific claim text, not just whether the URL exists):
+${sources.map((s) => `- ${s.url}${s.title ? ` (${s.title})` : ""}${s.content ? `\n  snippet: "${s.content}"` : ""}`).join("\n") || "(none)"}
 
 CLAIMS TO AUDIT (each has text, evidence label, and optional sourceUrl):
 ${JSON.stringify(claims, null, 2)}
 
 For each claim, decide if its evidence label is justified:
-- A "DOCUMENTED" or "REPORTED" claim needs a sourceUrl that is actually in the valid list above and plausibly supports the claim text.
+- A "DOCUMENTED" or "REPORTED" claim needs a sourceUrl that is in the valid list above AND whose snippet topically supports the specific claim text -- not just a source that exists and is broadly about ${appName}'s OAuth setup. A source whose snippet doesn't mention anything related to the specific claim (e.g. a general landing page cited for a narrow technical detail it doesn't actually cover) should be downgraded even though the URL itself is valid.
 - A claim with no sourceUrl, or a sourceUrl not in the valid list, cannot be DOCUMENTED or REPORTED -- it must be downgraded to UNCERTAIN.
 - Flag any claim that looks fabricated, overly specific without support (e.g. a suspiciously precise time estimate with no source), or that contradicts another claim in the list.
 
