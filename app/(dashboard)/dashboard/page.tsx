@@ -1,5 +1,6 @@
 import { listGuides } from "@/lib/db/queries";
 import { GuideSchema } from "@/lib/schema/guide";
+import { libraryVisible } from "@/lib/guide-library";
 import { GenerateForm } from "@/components/guide/generate-form";
 import { GuideCard } from "@/components/guide/guide-card";
 import { StatsPanel } from "@/components/guide/stats-panel";
@@ -10,10 +11,11 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const rows = await listGuides();
-  const guides = rows
+  const allGuides = rows
     .map((r) => GuideSchema.safeParse(r.guideJson))
     .filter((r) => r.success)
     .map((r) => r.data);
+  const guides = libraryVisible(allGuides);
 
   return (
     <div className="max-w-7xl px-8 py-10">

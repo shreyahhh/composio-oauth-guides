@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Library, Sparkles, ShieldCheck, FileCode } from "lucide-react";
 import { listGuides } from "@/lib/db/queries";
 import { GuideSchema } from "@/lib/schema/guide";
+import { libraryVisible } from "@/lib/guide-library";
 import { NavLink } from "./nav-link";
 import { GuideTabs } from "./guide-tabs";
 
@@ -11,7 +12,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 export async function Sidebar() {
   const rows = await listGuides();
-  const guides = rows.map((r) => GuideSchema.safeParse(r.guideJson)).filter((r) => r.success).map((r) => r.data);
+  const allGuides = rows.map((r) => GuideSchema.safeParse(r.guideJson)).filter((r) => r.success).map((r) => r.data);
+  const guides = libraryVisible(allGuides);
   const verified = guides.filter((g) => g.source === "handcrafted");
   const generated = guides.filter((g) => g.source === "generated");
 
