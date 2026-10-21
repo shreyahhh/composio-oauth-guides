@@ -1,15 +1,16 @@
-# OAuth Setup Guides
+# AuthPilot
 
 A developer building an AI agent doesn't actually want to know "how does
 OAuth work" -- they want to know **how long until I can launch, and what
 will block me?** when they need to register their own OAuth app with a
 provider (Gmail, Slack, LinkedIn, ...) before their users can connect it.
 
-This is a small, working tool for that: a library of verdict-first guides,
-a live agent pipeline that investigates and writes a new guide for any app
-in real time, and an honest evidence trail on every claim it makes.
+AuthPilot is a small, working tool for that: a library of verdict-first
+guides, a live agent pipeline that investigates and writes a new guide for
+any app in real time, and an honest evidence trail on every claim it makes.
 
-- **Live app:** _fill in your Vercel URL once deployed_
+- **Live app:** _fill in your Vercel URL once deployed_ -- a simple landing
+  page at `/`; the dashboard (library + live generation) lives at `/dashboard`
 - **Evidence & Verification:** `/evidence`
 - **Agent-readable index:** `/llms.txt`
 

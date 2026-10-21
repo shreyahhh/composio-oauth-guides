@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Library, Sparkles, ShieldCheck, FileCode } from "lucide-react";
 import { listGuides } from "@/lib/db/queries";
 import { GuideSchema } from "@/lib/schema/guide";
@@ -15,20 +16,20 @@ export async function Sidebar() {
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 px-4 py-4">
+      <Link href="/dashboard" className="flex items-center gap-2 px-4 py-4">
         <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
           <ShieldCheck className="size-4" />
         </div>
-        <span className="font-semibold">OAuth Setup Guides</span>
-      </div>
+        <span className="font-semibold">AuthPilot</span>
+      </Link>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
         <SectionLabel>Get started</SectionLabel>
         <div className="space-y-0.5">
-          <NavLink href="/" icon={<Library className="size-4 shrink-0" />} exact>
+          <NavLink href="/dashboard" icon={<Library className="size-4 shrink-0" />} exact>
             Library
           </NavLink>
-          <NavLink href="/#generate" icon={<Sparkles className="size-4 shrink-0" />}>
+          <NavLink href="/dashboard#generate" icon={<Sparkles className="size-4 shrink-0" />}>
             Generate a guide
           </NavLink>
           <NavLink href="/evidence" icon={<ShieldCheck className="size-4 shrink-0" />}>
