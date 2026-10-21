@@ -102,9 +102,10 @@ export default function EvidencePage() {
           it produced, claim by claim, against the verified guide -- against live docs, not a cherry-picked or
           edited run. The pipeline now includes a deterministic tier-consistency check (it scans a guide&apos;s
           own generated steps/blockers for gate signals and corrects the headline difficulty tier if it
-          contradicts them) and a research query aimed specifically at caps, quotas, and eligibility rules, on
-          top of the original research/draft/critic pipeline -- both added directly in response to failures this
-          page caught.
+          contradicts them), a research query aimed specifically at caps, quotas, and eligibility rules, and a
+          Critic that judges against actual source content/snippets rather than a bare URL, plus an app-name
+          check before accepting a recovered source -- all added directly in response to failures this page
+          caught.
         </p>
       </header>
 
@@ -155,12 +156,19 @@ export default function EvidencePage() {
               that all mention &quot;OAuth&quot;.
             </li>
             <li>
-              <strong className="text-foreground">Source presence still isn&apos;t source relevance.</strong> The
-              Critic step checks that a cited URL came back from the actual search results, but not that the
-              URL&apos;s content actually supports that specific claim. GitHub&apos;s hallucinated source (an
-              unrelated blog cited as evidence for a token-exchange claim) and Google&apos;s source-reuse pattern
-              (one generic landing page cited for six unrelated prerequisites) are both still present -- this
-              specific gap hasn&apos;t been addressed yet.
+              <strong className="text-foreground">
+                The specific hallucination is fixed; the general relevance problem isn&apos;t.
+              </strong>{" "}
+              GitHub&apos;s recovery path now requires a candidate source to actually mention &quot;GitHub&quot;
+              before accepting it, and the Norwegian-BankID-blog-cited-for-a-GitHub-claim bug is gone on re-run.
+              But re-running GitHub also showed the limit of that fix: one recovered claim now cites
+              Automattic&apos;s own privacy-policy template (hosted on github.com, so it passes the app-name
+              check) as evidence GitHub doesn&apos;t require a privacy policy for OAuth apps -- it mentions
+              &quot;GitHub&quot; without actually being authoritative on that specific point. Mentioning the right
+              app isn&apos;t the same as being right about the specific claim; that still needs real
+              content-relevance judgment, which is a deeper fix than a keyword check. (Google&apos;s source-reuse
+              pattern -- one generic landing page cited for six unrelated prerequisites -- wasn&apos;t re-tested
+              against the updated Critic this round and may or may not still occur.)
             </li>
             <li>
               <strong className="text-foreground">The agent isn&apos;t uniformly worse than the handcrafted guide.</strong>{" "}

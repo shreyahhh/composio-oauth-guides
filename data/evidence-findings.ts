@@ -26,20 +26,24 @@ export const evidenceComparisons: EvidenceComparison[] = [
         note: "Got the headline verdict right: self_serve difficulty, test connection works immediately after creating the OAuth App, matching the handcrafted guide.",
       },
       {
+        category: "correct",
+        note: "Now covers the actual OAuth App registration flow end to end (log in -> Settings -> Developer settings -> OAuth apps -> New OAuth App -> fill in the form -> register -> retrieve client ID/secret) -- 8 steps, where an earlier run skipped registration entirely and jumped straight to the authorization-code-exchange flow. This is web-search variance across runs, not something today's fixes specifically targeted, but it closes what was previously the single biggest gap versus the handcrafted guide.",
+      },
+      {
+        category: "correct",
+        note: "The hallucinated-source bug is fixed for its specific failure mode: a claim this unrelated to GitHub (a Norwegian BankID blog, cited via the Critic's recovery search) can no longer get attached, because recovery now requires the candidate result's title/snippet to actually mention \"GitHub\" before accepting it -- a cheap check, but an effective one against wrong-provider sources, since an off-topic page essentially never happens to mention the app by name.",
+      },
+      {
         category: "wrong",
-        note: "Attached a hallucinated source to a real claim: the \"token exchange returns access_token and expires_in\" step cites https://www.signicat.com/.../norwegian-bank-id -- a blog post about Norwegian BankID, unrelated to GitHub. The Critic's \"is this URL in the search results\" check passed because a generic OAuth explainer surfaced in the search, but it doesn't actually verify GitHub-specific behavior. This is the clearest evidence that source-presence is not the same as source-relevance.",
+        note: "The fix isn't a general relevance filter, though: of the 3 claims recovered via extra search this run, one cites Automattic's own privacy-policy template (hosted on github.com, so it passes the app-name check) as evidence that GitHub doesn't require a privacy-policy URL for OAuth apps -- technically mentions \"GitHub\" but doesn't actually substantiate that specific claim. A page merely mentioning the app by name isn't the same as a page being authoritative on the specific point it's cited for; catching that would need real content-relevance judgment, not a keyword check. (All 3 recovered claims were at least correctly labeled REPORTED rather than DOCUMENTED, since none resolved to a recognized docs/developer subdomain -- appropriately hedged confidence even where the source is weak.)",
       },
       {
         category: "missing",
-        note: "Skipped the actual OAuth App registration step entirely (Settings -> Developer settings -> New OAuth App, filling in name/homepage/callback URL, generating a client secret) and jumped straight to the authorization-code-exchange flow. The assignment is about setting up the OAuth app itself, not just calling it once it exists -- this is the single biggest gap between the two guides.",
+        note: "developerPortalUrl and appUrl both came back null again; the handcrafted guide has https://github.com/settings/developers and https://github.com. This is a resolve-step gap neither of today's fixes touches.",
       },
       {
         category: "missing",
-        note: "developerPortalUrl and appUrl both came back null; the handcrafted guide has https://github.com/settings/developers and https://github.com. The resolve/draft steps didn't bother to look these up even though they're trivial to find.",
-      },
-      {
-        category: "missing",
-        note: "scopesAndTiers is a single generic \"any\" entry with UNCERTAIN evidence, versus the handcrafted guide naming concrete scopes (repo, read:user) with a DOCUMENTED citation. The agent had a source confirming no scope-based review exists but defaulted to hedging instead of citing it.",
+        note: "scopesAndTiers came back empty this run (previously at least a generic \"any\" entry), versus the handcrafted guide naming concrete scopes (repo, read:user) with a DOCUMENTED citation.",
       },
     ],
   },

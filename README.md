@@ -229,12 +229,15 @@ any app in real time, and an honest evidence trail on every claim it makes.
 
 See `/evidence` for the full claim-by-claim comparison, run via the live
 pipeline against all four library apps (GitHub, Notion, Spotify, Google) and
-diffed against the hand-verified guides. The pipeline includes two targeted
+diffed against the hand-verified guides. The pipeline includes three targeted
 fixes built directly from earlier failures this page caught: a deterministic
 check that scans a drafted guide's own steps/blockers for gate signals and
-corrects the headline difficulty tier if it contradicts them, and a research
+corrects the headline difficulty tier if it contradicts them; a research
 query aimed specifically at caps, quotas, and eligibility rules rather than
-general review-process language.
+general review-process language; and a Critic that judges a cited source
+against its actual content/snippet (not a bare URL) and, when recovering an
+otherwise-unsupported claim via a fresh search, requires the candidate result
+to actually mention the app by name before accepting it.
 
 Difficulty-tier accuracy is now the strongest part of the pipeline: Google,
 Spotify, and Notion all previously had a wrong headline tier, and all three
@@ -254,17 +257,27 @@ the three generated setup steps with irrelevant content -- a single generic
 search query can pick the wrong specific page when a provider's domain hosts
 multiple, differently-named products that all mention "OAuth."
 
-The source-relevance gap is unchanged: GitHub's hallucinated source (an
-unrelated blog cited as evidence for a token-exchange claim) and Google's
-source-reuse pattern (one generic landing page cited for six unrelated
-prerequisites) are both still present -- the Critic confirms a cited URL
-appeared in search results, not that it's specific to the claim it's
-attached to. Not uniformly worse, though: the agent consistently labels
-forum/community-sourced claims REPORTED rather than DOCUMENTED, which is
-good evidence discipline the handcrafted guides don't even have occasion to
-exercise. Net takeaway: the remaining failures cluster in judgment calls --
-which specific fact is load-bearing, which page is actually the right one --
-rather than in raw research effort.
+The source-relevance fix closed its specific target but not the general
+problem: re-running GitHub confirmed the Norwegian-BankID-blog-cited-for-a-
+GitHub-claim hallucination is gone -- the recovery path now requires a
+candidate source to actually mention "GitHub" before accepting it, and an
+off-topic page from an unrelated provider essentially never does. But the
+same re-run also showed the fix's limit: one recovered claim now cites
+Automattic's own privacy-policy template (hosted on github.com, so it passes
+the app-name check) as evidence GitHub doesn't require a privacy policy for
+OAuth apps -- it mentions "GitHub" without actually being authoritative on
+that specific point. Mentioning the right app isn't the same as being right
+about the specific claim; that needs real content-relevance judgment, which
+is a deeper fix than a keyword check. (Google's source-reuse pattern -- one
+generic landing page cited for six unrelated prerequisites -- wasn't
+re-tested against the updated Critic and may or may not still occur.) Not
+uniformly worse, though: the agent consistently labels forum/community-
+sourced claims REPORTED rather than DOCUMENTED, which is good evidence
+discipline the handcrafted guides don't even have occasion to exercise. Net
+takeaway: the remaining failures cluster in judgment calls -- which specific
+fact is load-bearing, which page is actually the right one, whether a source
+is merely on-topic versus actually authoritative -- rather than in raw
+research effort.
 
 ## What's next
 
