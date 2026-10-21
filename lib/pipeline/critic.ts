@@ -66,16 +66,57 @@ function retryQuery(appName: string, claimText: string, attempt: number): string
   return `"${appName}" developer docs ${claimText}`;
 }
 
+type RecoveryCandidate = { claimText: string; url: string; title: string; content: string };
+
+const RelevanceResultSchema = z.object({
+  judgments: z.array(
+    z.object({
+      claimText: z.string().describe("Must match a claim's text field verbatim."),
+      supported: z.boolean().describe("True only if the snippet specifically supports this exact claim, not just the same general topic/app."),
+    })
+  ),
+});
+
+/**
+ * Mentioning the right app isn't the same as being authoritative on the
+ * specific claim -- evidence-findings.ts caught a recovered GitHub claim
+ * ("no privacy-policy URL required") citing Automattic's own privacy-policy
+ * template, which mentions "GitHub" only because it's hosted on github.com.
+ * A single batched LLM call (not one call per candidate, to keep this bounded
+ * to the same rate-limit budget as before) reads each claim next to its
+ * candidate's actual snippet and judges real support, not just topical
+ * overlap.
+ */
+async function judgeCandidateRelevance(candidates: RecoveryCandidate[]): Promise<Set<string>> {
+  if (candidates.length === 0) return new Set();
+
+  const { object } = await withBackoff(() =>
+    generateObject({
+      model: flashModel,
+      schema: RelevanceResultSchema,
+      prompt: `For each (claim, candidate source) pair below, does the source's snippet specifically support that exact claim -- not just relate to the same app or general topic?
+
+${candidates
+  .map((c, i) => `[${i + 1}] Claim: "${c.claimText}"\nCandidate (${c.url}): "${c.content}"`)
+  .join("\n\n")}
+
+Be strict: a source that's merely about the same app/product, or that happens to mention it incidentally (e.g. a company's own privacy policy page, hosted on the provider's domain, cited as evidence for a claim about the provider's own requirements), does NOT count as support unless its content actually addresses the claim's specific point.
+
+Respond with a judgment for every claim listed above.`,
+    })
+  );
+
+  return new Set(object.judgments.filter((j) => j.supported).map((j) => j.claimText));
+}
+
 /**
  * Before accepting a claim as UNCERTAIN, try a couple more targeted
  * searches -- the model's own source list might just be incomplete for
  * this specific claim, not the claim itself being genuinely unverifiable.
  * Only called for claims the critic flagged UNCERTAIN, capped to keep
- * search-API usage and runtime bounded. A candidate result is only accepted
- * if it actually mentions the app being documented -- otherwise it's
- * skipped and the next search attempt (or eventually UNCERTAIN) is used
- * instead of attaching an off-topic source just because it was the first
- * unused result.
+ * search-API usage and runtime bounded. Candidates are gathered first (cheap
+ * Tavily searches only), then judged for real relevance in one batched LLM
+ * call -- an app-name mention alone isn't accepted as support.
  */
 async function tryRecoverUncertainClaims(
   downgrades: Downgrade[],
@@ -83,22 +124,29 @@ async function tryRecoverUncertainClaims(
   alreadyTriedUrls: string[]
 ): Promise<Downgrade[]> {
   const toUpgrade = downgrades.filter((d) => d.newLabel === "UNCERTAIN").slice(0, MAX_CLAIMS_TO_RECOVER);
-  const recoveredByClaimText = new Map<string, Downgrade>();
+  const candidates: RecoveryCandidate[] = [];
 
   for (const d of toUpgrade) {
     for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_CLAIM; attempt++) {
       const results = await tavilySearch(retryQuery(appName, d.claimText, attempt), 3);
       const match = results.find((r) => !alreadyTriedUrls.includes(r.url) && mentionsApp(r, appName));
       if (match) {
-        recoveredByClaimText.set(d.claimText, {
-          claimText: d.claimText,
-          newLabel: isLikelyOfficialDocs(match.url) ? "DOCUMENTED" : "REPORTED",
-          reason: `Recovered via an additional search after the first pass found no source.`,
-          sourceUrl: match.url,
-        });
+        candidates.push({ claimText: d.claimText, url: match.url, title: match.title, content: match.content });
         break;
       }
     }
+  }
+
+  const supported = await judgeCandidateRelevance(candidates);
+  const recoveredByClaimText = new Map<string, Downgrade>();
+  for (const c of candidates) {
+    if (!supported.has(c.claimText)) continue;
+    recoveredByClaimText.set(c.claimText, {
+      claimText: c.claimText,
+      newLabel: isLikelyOfficialDocs(c.url) ? "DOCUMENTED" : "REPORTED",
+      reason: `Recovered via an additional search after the first pass found no source; checked for real support, not just topical relevance.`,
+      sourceUrl: c.url,
+    });
   }
 
   return downgrades.map((d) => recoveredByClaimText.get(d.claimText) ?? d);

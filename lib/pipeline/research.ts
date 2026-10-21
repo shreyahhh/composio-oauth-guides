@@ -16,8 +16,17 @@ const MAX_NARRATIVE_CHARS = 4000;
 // Short enough that threading all ~10 sources' content into the Critic's
 // prompt later (lib/pipeline/critic.ts) stays within the same per-minute
 // token budget -- just enough for the Critic to judge topical relevance,
-// not a full re-read of each page.
+// not a full re-read of each page. Search-result snippets from Tavily are
+// already this short or shorter, so this mostly just caps them.
 const MAX_SOURCE_SNIPPET_CHARS = 300;
+// The official docs page gets a much bigger snippet than search results --
+// Draft sees the full MAX_DOC_CHARS of it, and different claims legitimately
+// draw on different sections of a long docs page. Giving the Critic only a
+// 300-char intro-paragraph snippet of the SAME page it was grounded in made
+// it unable to verify claims it had no reason to doubt, downgrading
+// perfectly well-supported claims to UNCERTAIN just because its own view of
+// the source was narrower than Draft's.
+const MAX_OFFICIAL_DOC_SNIPPET_CHARS = 2000;
 
 /**
  * Reads the official docs page directly (if we found one) via Readability,
@@ -59,7 +68,7 @@ export async function researchApp(resolved: ResolvedApp): Promise<ResearchResult
     sources.push({
       url: resolved.providerDocsUrl,
       title: "Official docs",
-      content: officialDocsText.slice(0, MAX_SOURCE_SNIPPET_CHARS),
+      content: officialDocsText.slice(0, MAX_OFFICIAL_DOC_SNIPPET_CHARS),
     });
   }
   for (const r of [...searchResults, ...gateResults]) {
