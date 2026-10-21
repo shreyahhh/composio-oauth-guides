@@ -23,27 +23,23 @@ export const evidenceComparisons: EvidenceComparison[] = [
     findings: [
       {
         category: "correct",
-        note: "Got the headline verdict right: self_serve difficulty, test connection works immediately after creating the OAuth App, matching the handcrafted guide.",
+        note: "Got the headline verdict right: self_serve difficulty, test connection works immediately after creating the OAuth App, matching the handcrafted guide. Now also covers the full registration-to-token-exchange flow (log in -> create OAuth app -> configure redirect URLs -> choose scopes -> authorization request -> user consent -> token exchange), where an earlier run skipped registration entirely.",
       },
       {
         category: "correct",
-        note: "Now covers the actual OAuth App registration flow end to end (log in -> Settings -> Developer settings -> OAuth apps -> New OAuth App -> fill in the form -> register -> retrieve client ID/secret) -- 8 steps, where an earlier run skipped registration entirely and jumped straight to the authorization-code-exchange flow. This is web-search variance across runs, not something today's fixes specifically targeted, but it closes what was previously the single biggest gap versus the handcrafted guide.",
-      },
-      {
-        category: "correct",
-        note: "The hallucinated-source bug is fixed for its specific failure mode: a claim this unrelated to GitHub (a Norwegian BankID blog, cited via the Critic's recovery search) can no longer get attached, because recovery now requires the candidate result's title/snippet to actually mention \"GitHub\" before accepting it -- a cheap check, but an effective one against wrong-provider sources, since an off-topic page essentially never happens to mention the app by name.",
+        note: "No hallucinated or merely-coincidental sources are attached anywhere in this run -- the one claim that did get a source (needing a client_id/client_secret from registering the app) cites a genuinely on-topic GitHub docs sub-page. The wrong-provider hallucination this page originally caught (a Norwegian BankID blog cited for a GitHub claim) and the on-topic-but-not-authoritative gap caught in an earlier pass (Automattic's own privacy-policy template, cited only because it happens to be hosted on github.com) are both absent here.",
       },
       {
         category: "wrong",
-        note: "The fix isn't a general relevance filter, though: of the 3 claims recovered via extra search this run, one cites Automattic's own privacy-policy template (hosted on github.com, so it passes the app-name check) as evidence that GitHub doesn't require a privacy-policy URL for OAuth apps -- technically mentions \"GitHub\" but doesn't actually substantiate that specific claim. A page merely mentioning the app by name isn't the same as a page being authoritative on the specific point it's cited for; catching that would need real content-relevance judgment, not a keyword check. (All 3 recovered claims were at least correctly labeled REPORTED rather than DOCUMENTED, since none resolved to a recognized docs/developer subdomain -- appropriately hedged confidence even where the source is weak.)",
+        note: "That absence of bad sources came at a real cost, and it's a regression worth being honest about: 10 of 11 claims ended up UNCERTAIN, including very basic, uncontroversial mechanics (signing in, the authorization redirect, the token exchange) that GitHub's own fetched docs almost certainly do support. The Critic's relevance check was only shown a 300-character intro snippet of the official docs page, while Draft had worked from the full ~4000-character page -- the Critic couldn't verify claims it had no real reason to doubt, simply because its own view of the source was narrower than Draft's. This has been fixed in code (the official-docs snippet given to the Critic is now a much larger slice of the same page Draft saw), but that fix hasn't been re-verified live yet -- Groq's free tier rate-limited every attempt to re-run this today. Treat this specific run's heavy UNCERTAIN count as reflecting that interim bug, not a permanent regression.",
+      },
+      {
+        category: "correct",
+        note: "Surfaced a genuinely new, plausible nuance no prior run mentioned: GitHub's rate limits for OAuth apps (2,000 token requests/hour, 5,000 API calls/hour per user), honestly labeled UNCERTAIN since no source was attached -- the right call for a specific-sounding number the pipeline couldn't actually verify, rather than stating it as fact.",
       },
       {
         category: "missing",
-        note: "developerPortalUrl and appUrl both came back null again; the handcrafted guide has https://github.com/settings/developers and https://github.com. This is a resolve-step gap neither of today's fixes touches.",
-      },
-      {
-        category: "missing",
-        note: "scopesAndTiers came back empty this run (previously at least a generic \"any\" entry), versus the handcrafted guide naming concrete scopes (repo, read:user) with a DOCUMENTED citation.",
+        note: "appUrl still came back null; the handcrafted guide has https://github.com. developerPortalUrl resolved to a docs sub-page rather than the actual https://github.com/settings/developers the handcrafted guide links -- better than null, but still not the real destination.",
       },
     ],
   },

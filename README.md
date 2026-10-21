@@ -235,9 +235,10 @@ check that scans a drafted guide's own steps/blockers for gate signals and
 corrects the headline difficulty tier if it contradicts them; a research
 query aimed specifically at caps, quotas, and eligibility rules rather than
 general review-process language; and a Critic that judges a cited source
-against its actual content/snippet (not a bare URL) and, when recovering an
-otherwise-unsupported claim via a fresh search, requires the candidate result
-to actually mention the app by name before accepting it.
+against its actual content (not a bare URL), including a dedicated check --
+on its recovery path, via one batched LLM call across all recovered claims --
+for whether a candidate source actually supports the specific claim it's
+attached to, not just whether it mentions the right app.
 
 Difficulty-tier accuracy is now the strongest part of the pipeline: Google,
 Spotify, and Notion all previously had a wrong headline tier, and all three
@@ -257,27 +258,35 @@ the three generated setup steps with irrelevant content -- a single generic
 search query can pick the wrong specific page when a provider's domain hosts
 multiple, differently-named products that all mention "OAuth."
 
-The source-relevance fix closed its specific target but not the general
-problem: re-running GitHub confirmed the Norwegian-BankID-blog-cited-for-a-
-GitHub-claim hallucination is gone -- the recovery path now requires a
-candidate source to actually mention "GitHub" before accepting it, and an
-off-topic page from an unrelated provider essentially never does. But the
-same re-run also showed the fix's limit: one recovered claim now cites
-Automattic's own privacy-policy template (hosted on github.com, so it passes
-the app-name check) as evidence GitHub doesn't require a privacy policy for
-OAuth apps -- it mentions "GitHub" without actually being authoritative on
-that specific point. Mentioning the right app isn't the same as being right
-about the specific claim; that needs real content-relevance judgment, which
-is a deeper fix than a keyword check. (Google's source-reuse pattern -- one
-generic landing page cited for six unrelated prerequisites -- wasn't
-re-tested against the updated Critic and may or may not still occur.) Not
-uniformly worse, though: the agent consistently labels forum/community-
-sourced claims REPORTED rather than DOCUMENTED, which is good evidence
-discipline the handcrafted guides don't even have occasion to exercise. Net
-takeaway: the remaining failures cluster in judgment calls -- which specific
-fact is load-bearing, which page is actually the right one, whether a source
-is merely on-topic versus actually authoritative -- rather than in raw
-research effort.
+Fixing the source-relevance problem took three passes, each surfacing the
+next issue. First, requiring a recovered source to mention the app by name
+closed the original bug -- a Norwegian BankID blog cited as evidence for a
+GitHub claim is gone on re-run. The next run exposed that fix's limit: a
+recovered claim cited Automattic's own privacy-policy template (hosted on
+github.com, so it passed the app-name check) without actually being
+authoritative on the point it was cited for -- mentioning the right app
+isn't the same as being right about the specific claim. Fixing that with a
+real relevance judgment (the Critic reading each claim next to its
+candidate's actual content, via one batched LLM call per guide) then
+surfaced a third issue in the opposite direction: shown only a
+300-character snippet of the official docs page, versus the full ~4,000
+characters Draft worked from, the Critic couldn't verify claims it had no
+real reason to doubt, and over-corrected 10 of 11 GitHub claims to
+UNCERTAIN -- including basic mechanics GitHub's own docs clearly cover.
+That snippet-size mismatch is fixed in code (the Critic now sees a much
+larger slice of the same official-docs page Draft saw), but hasn't been
+re-verified live yet -- Groq's free tier rate-limited every attempt to
+re-run it today. (Google's source-reuse pattern -- one generic landing page
+cited for six unrelated prerequisites -- is in the same boat: not yet
+re-tested against the updated Critic.) Not uniformly worse, though: the
+agent consistently labels forum/community-sourced claims REPORTED rather
+than DOCUMENTED, which is good evidence discipline the handcrafted guides
+don't even have occasion to exercise. Net takeaway: the remaining failures
+cluster in judgment calls -- which specific fact is load-bearing, which page
+is actually the right one, whether a source is merely on-topic versus
+actually authoritative -- rather than in raw research effort, and fixing one
+of these gaps reliably surfaces the next rather than eliminating the whole
+class of problem in one pass.
 
 ## What's next
 

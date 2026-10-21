@@ -103,9 +103,10 @@ export default function EvidencePage() {
           edited run. The pipeline now includes a deterministic tier-consistency check (it scans a guide&apos;s
           own generated steps/blockers for gate signals and corrects the headline difficulty tier if it
           contradicts them), a research query aimed specifically at caps, quotas, and eligibility rules, and a
-          Critic that judges against actual source content/snippets rather than a bare URL, plus an app-name
-          check before accepting a recovered source -- all added directly in response to failures this page
-          caught.
+          Critic that judges claims against actual source content rather than a bare URL -- including, on its
+          recovery path, a dedicated check for whether a candidate source actually supports the specific claim
+          it&apos;s attached to, not just whether it mentions the right app -- all added directly in response to
+          failures this page caught.
         </p>
       </header>
 
@@ -157,18 +158,21 @@ export default function EvidencePage() {
             </li>
             <li>
               <strong className="text-foreground">
-                The specific hallucination is fixed; the general relevance problem isn&apos;t.
+                Fixing one relevance gap surfaced another, in both directions.
               </strong>{" "}
-              GitHub&apos;s recovery path now requires a candidate source to actually mention &quot;GitHub&quot;
-              before accepting it, and the Norwegian-BankID-blog-cited-for-a-GitHub-claim bug is gone on re-run.
-              But re-running GitHub also showed the limit of that fix: one recovered claim now cites
-              Automattic&apos;s own privacy-policy template (hosted on github.com, so it passes the app-name
-              check) as evidence GitHub doesn&apos;t require a privacy policy for OAuth apps -- it mentions
-              &quot;GitHub&quot; without actually being authoritative on that specific point. Mentioning the right
-              app isn&apos;t the same as being right about the specific claim; that still needs real
-              content-relevance judgment, which is a deeper fix than a keyword check. (Google&apos;s source-reuse
-              pattern -- one generic landing page cited for six unrelated prerequisites -- wasn&apos;t re-tested
-              against the updated Critic this round and may or may not still occur.)
+              GitHub&apos;s recovery path now requires a candidate source to mention &quot;GitHub&quot; before
+              accepting it -- the Norwegian-BankID-blog-cited-for-a-GitHub-claim hallucination is gone. The next
+              run exposed the fix&apos;s limit: a recovered claim cited Automattic&apos;s own privacy-policy
+              template (hosted on github.com, so it passed the app-name check) without actually being authoritative
+              on the point it was cited for. Fixing that with a real relevance judgment -- the Critic reading each
+              claim next to its candidate&apos;s actual content, not just checking the app name -- then surfaced a
+              third issue in the opposite direction: shown only a 300-character snippet of the official docs page
+              (versus the full ~4,000 characters Draft worked from), the Critic couldn&apos;t verify claims it had
+              no real reason to doubt, and over-corrected 10 of 11 claims to UNCERTAIN, including basic mechanics
+              GitHub&apos;s own docs clearly cover. That snippet-size mismatch is fixed in code, but not yet
+              re-verified live -- Groq&apos;s free tier rate-limited every attempt to re-run it today. (Google&apos;s
+              source-reuse pattern -- one generic landing page cited for six unrelated prerequisites -- is in the
+              same boat: not yet re-tested against the updated Critic.)
             </li>
             <li>
               <strong className="text-foreground">The agent isn&apos;t uniformly worse than the handcrafted guide.</strong>{" "}
