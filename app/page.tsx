@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { listGuides } from "@/lib/db/queries";
 import { GuideSchema } from "@/lib/schema/guide";
 import { GenerateForm } from "@/components/guide/generate-form";
@@ -16,7 +15,7 @@ export default async function Home() {
     .map((r) => r.data);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-10 px-4 py-12">
+    <div className="max-w-5xl space-y-10 px-8 py-10">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">OAuth Setup Guides</h1>
         <p className="max-w-2xl text-muted-foreground">
@@ -24,18 +23,9 @@ export default async function Home() {
           OAuth work&quot; -- it&apos;s how long until you can launch, and what will block you. Every guide below
           leads with a verdict, then the details, with every claim labeled by how well it&apos;s supported.
         </p>
-        <p className="text-sm">
-          <Link href="/evidence" className="underline underline-offset-2">
-            Evidence &amp; Verification
-          </Link>{" "}
-          &middot;{" "}
-          <Link href="/llms.txt" className="underline underline-offset-2" target="_blank">
-            llms.txt
-          </Link>
-        </p>
       </header>
 
-      <section className="space-y-3">
+      <section id="generate" className="space-y-3 scroll-mt-6">
         <h2 className="text-lg font-medium">Generate a guide for any app</h2>
         <GenerateForm />
       </section>
@@ -45,7 +35,7 @@ export default async function Home() {
         {guides.length === 0 ? (
           <p className="text-sm text-muted-foreground">No guides yet -- generate one above, or run the seed script.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {guides.map((g) => (
               <GuideCard key={g.slug} guide={g} />
             ))}

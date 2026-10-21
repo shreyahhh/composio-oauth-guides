@@ -33,7 +33,7 @@ export function GuideView({ guide }: { guide: Guide }) {
   const { verdict, evidenceSummary, managedAuth } = guide;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+    <div className="max-w-3xl space-y-6 px-8 py-10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
