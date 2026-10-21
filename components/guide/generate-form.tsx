@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import {
   PipelineStepper,
+  PipelineProgressHeader,
   initialStepStatus,
   type StepKey,
   type StepStatusMap,
@@ -150,7 +152,9 @@ export function GenerateForm() {
 
       {status && (
         <Card>
-          <CardContent className="pt-5">
+          <CardContent className="space-y-4 pt-5">
+            <PipelineProgressHeader status={status} />
+            <Separator />
             <PipelineStepper status={status} />
           </CardContent>
         </Card>

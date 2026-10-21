@@ -1,6 +1,7 @@
 import { Search, Globe, Link2, FileText, ShieldCheck, Database, Loader2, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 export type StepKey = "resolve" | "research" | "composio_check" | "draft" | "critic" | "save";
 export type StepState = "pending" | "running" | "done" | "warning" | "error";
@@ -24,6 +25,49 @@ export function initialStepStatus(): StepStatusMap {
     acc[key] = { state: "pending" };
     return acc;
   }, {} as StepStatusMap);
+}
+
+const SETTLED: StepState[] = ["done", "warning", "error"];
+
+/** 0-100. A running step counts as half-credit so the bar visibly moves
+ * mid-step rather than jumping only on completion. */
+export function progressPercent(status: StepStatusMap): number {
+  const settled = STEP_ORDER.filter((k) => SETTLED.includes(status[k].state)).length;
+  const running = STEP_ORDER.some((k) => status[k].state === "running") ? 0.5 : 0;
+  return Math.round((Math.min(STEP_ORDER.length, settled + running) / STEP_ORDER.length) * 100);
+}
+
+/** Index of the step currently running, or the last one that settled, or -1 if nothing has started. */
+export function currentStepIndex(status: StepStatusMap): number {
+  const runningIdx = STEP_ORDER.findIndex((k) => status[k].state === "running");
+  if (runningIdx !== -1) return runningIdx;
+  for (let i = STEP_ORDER.length - 1; i >= 0; i--) {
+    if (SETTLED.includes(status[STEP_ORDER[i]].state)) return i;
+  }
+  return -1;
+}
+
+export function PipelineProgressHeader({ status }: { status: StepStatusMap }) {
+  const idx = currentStepIndex(status);
+  const pct = progressPercent(status);
+  const hasError = STEP_ORDER.some((k) => status[k].state === "error");
+  const allSettledOk = STEP_ORDER.every((k) => status[k].state === "done" || status[k].state === "warning");
+
+  let label: string;
+  if (hasError) label = "Stopped";
+  else if (allSettledOk) label = "Done";
+  else if (idx === -1) label = "Starting...";
+  else label = `Step ${idx + 1} of ${STEP_ORDER.length}: ${STEP_META[STEP_ORDER[idx]].title}`;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{pct}%</span>
+      </div>
+      <Progress value={pct} />
+    </div>
+  );
 }
 
 const STATE_RING: Record<StepState, string> = {
@@ -59,11 +103,18 @@ export function PipelineStepper({ status }: { status: StepStatusMap }) {
         const isLast = i === STEP_ORDER.length - 1;
 
         return (
-          <li key={key} className="flex gap-3">
+          <li
+            key={key}
+            className={cn(
+              "flex gap-3 rounded-lg px-2 -mx-2 transition-colors",
+              state === "running" && "bg-primary/5"
+            )}
+          >
             <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  "flex size-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  state === "running" && "ring-4 ring-primary/10",
                   STATE_RING[state]
                 )}
               >
@@ -79,11 +130,11 @@ export function PipelineStepper({ status }: { status: StepStatusMap }) {
               )}
             </div>
             <div className={cn("pb-6", isLast && "pb-1")}>
-              <div className="flex items-center gap-2 pt-1">
-                <span className={cn("text-sm font-medium", state === "pending" && "text-muted-foreground")}>
+              <div className="flex items-center gap-2 pt-1.5">
+                <span className={cn("text-sm font-semibold", state === "pending" && "font-medium text-muted-foreground")}>
                   {title}
                 </span>
-                {state === "pending" && <span className="text-xs text-muted-foreground">({blurb})</span>}
+                {state === "pending" && <span className="text-xs text-muted-foreground">{blurb}</span>}
               </div>
               {detail && <p className={cn("mt-0.5 text-sm", STATE_DETAIL_CLASS[state])}>{detail}</p>}
             </div>
