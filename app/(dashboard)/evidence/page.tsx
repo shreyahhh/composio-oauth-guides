@@ -99,8 +99,12 @@ export default function EvidencePage() {
           A small, honest self-check: we ran the live agent on all four apps already in the library, which
           we&apos;d separately hand-researched and source-checked (GitHub: no gate; Notion: optional gallery
           review; Spotify: a hard user quota; Google: full verification + security assessment), and diffed what
-          it produced, claim by claim, against the verified guide. Run on 2026-10-21 against live docs --
-          not a cherry-picked or edited run.
+          it produced, claim by claim, against the verified guide -- against live docs, not a cherry-picked or
+          edited run. The pipeline now includes a deterministic tier-consistency check (it scans a guide&apos;s
+          own generated steps/blockers for gate signals and corrects the headline difficulty tier if it
+          contradicts them) and a research query aimed specifically at caps, quotas, and eligibility rules, on
+          top of the original research/draft/critic pipeline -- both added directly in response to failures this
+          page caught.
         </p>
       </header>
 
@@ -118,44 +122,53 @@ export default function EvidencePage() {
           <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
             <li>
               <strong className="text-foreground">
-                The agent consistently misses the specific gate, cap, or eligibility rule that makes a provider
-                hard -- the exact thing a developer most needs to know.
+                Difficulty-tier accuracy is now the pipeline&apos;s strongest point, not its weakest.
               </strong>{" "}
-              It missed Spotify&apos;s 5-user Development Mode cap entirely, and separately missed that Extended
-              Quota Mode has been organization-only since May 2025. (Spotify&apos;s quota numbers are demonstrably
-              easy to get wrong even with care: the handcrafted guide&apos;s own file comment records a different
-              correction on this same app -- an earlier pass assumed a 25-user cap before the actual 5-user figure
-              was confirmed.) It also missed Notion&apos;s Integration Gallery review window, and mislabeled
-              Google&apos;s overall difficulty as self-serve despite generating its own step describing a
-              multi-week review. The agent is reliably good at the mechanical &quot;how do I click through this&quot;
-              steps and reliably weak at surfacing the one eligibility rule or quota that actually gates launch --
-              which is precisely the &quot;requirements and nuances that could affect setup&quot; the brief asks
-              guides to surface. This is the strongest argument for keeping the handcrafted library as the trusted
-              baseline rather than treating live-generated guides as equivalent.
+              All three apps that previously had a wrong headline tier -- Google (<code>self_serve</code> despite
+              describing its own multi-week review), Spotify (<code>light_review</code> despite a hard user
+              quota), and Notion (<code>self_serve</code> despite an Integration Gallery wait) -- now correctly
+              flag that a real gate exists. Google and Spotify land exactly on <code>heavy_review</code>, matching
+              the handcrafted guides. Notion overshoots to <code>heavy_review</code> where <code>light_review</code>{" "}
+              is the more accurate answer -- a few days of marketplace review is milder than Google&apos;s
+              multi-week security assessment -- but correctly signaling a wait exists beats confidently claiming
+              there is none.
             </li>
             <li>
-              <strong className="text-foreground">Source presence isn&apos;t source relevance.</strong> The
+              <strong className="text-foreground">
+                Fixing &quot;is there a gate&quot; doesn&apos;t fix &quot;what exactly is the gate&quot;.
+              </strong>{" "}
+              Spotify&apos;s guide now surfaces the real eligibility bar for Extended Quota Mode -- a 250,000-MAU
+              minimum, geographic availability, a registered legal entity -- but still never states the single
+              most load-bearing number in the whole guide: that Development Mode caps a new app at 5 real
+              authorized users. Getting the tier right and getting the specific number right turned out to be two
+              separate problems with two different causes.
+            </li>
+            <li>
+              <strong className="text-foreground">
+                Chasing one fix surfaced a new, different failure mode.
+              </strong>{" "}
+              Re-running Notion landed the resolve step on an official-looking but unrelated page --
+              developers.notion.com&apos;s docs for its own &quot;Workers&quot; automation platform, not the
+              public-integration OAuth flow a developer actually needs -- which then contaminated two of the
+              generated guide&apos;s three steps with irrelevant content. A single generic search query can pick
+              the wrong specific page when a provider&apos;s domain hosts multiple, differently-named products
+              that all mention &quot;OAuth&quot;.
+            </li>
+            <li>
+              <strong className="text-foreground">Source presence still isn&apos;t source relevance.</strong> The
               Critic step checks that a cited URL came back from the actual search results, but not that the
-              URL&apos;s content actually supports that specific claim. That let an unrelated blog post get cited
-              as evidence for a GitHub token-exchange claim, let one generic Google landing page get reused as the
-              source for six unrelated setup steps, and let a third-party blog outrank Notion&apos;s own docs for
-              the core OAuth-flow claims. All of these passed the automated check; none should have counted as
-              strong evidence for the specific claim attached to it.
-            </li>
-            <li>
-              <strong className="text-foreground">A guide&apos;s own body can contradict its headline verdict.</strong>{" "}
-              The generated Google guide labeled itself <code>self_serve</code> while also generating a step
-              called &quot;Await Google review&quot; with a multi-week estimate -- the single field a developer
-              scans first (difficulty tier) was wrong even though the underlying steps were largely right.
+              URL&apos;s content actually supports that specific claim. GitHub&apos;s hallucinated source (an
+              unrelated blog cited as evidence for a token-exchange claim) and Google&apos;s source-reuse pattern
+              (one generic landing page cited for six unrelated prerequisites) are both still present -- this
+              specific gap hasn&apos;t been addressed yet.
             </li>
             <li>
               <strong className="text-foreground">The agent isn&apos;t uniformly worse than the handcrafted guide.</strong>{" "}
-              Its Google step-by-step breakdown was more granular and arguably more actionable than the hand-written
-              version, and it correctly used REPORTED (not DOCUMENTED) for a Spotify forum-sourced claim the
-              handcrafted guide doesn&apos;t even mention. The failures cluster in judgment calls -- which facts
-              are load-bearing, which sources are authoritative -- rather than in raw research effort, which argues
-              for keeping a human/Critic check on the summary fields and the &quot;what&apos;s the hardest part&quot;
-              judgment specifically, not for distrusting the pipeline wholesale.
+              It consistently uses REPORTED rather than DOCUMENTED for forum/community-sourced claims (Spotify&apos;s
+              MAU minimum and legal-entity requirement, sourced from a Spotify Community thread) -- good evidence
+              discipline the handcrafted guides don&apos;t even have occasion to exercise. The remaining failures
+              cluster in judgment calls -- which specific fact is load-bearing, which page is actually the right
+              one -- rather than in raw research effort.
             </li>
           </ul>
         </CardContent>

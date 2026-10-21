@@ -1,10 +1,9 @@
 /**
- * Findings from actually running the live pipeline on 2026-10-21 against
- * all four library apps (github-generated, google-generated,
- * notion-generated, spotify-generated) and comparing the output against the
- * hand-researched, source-checked guides (app/guides/github, google, notion,
- * spotify). See README "Evidence & Verification" for how this fits into the
- * overall evidence story.
+ * Findings from running the live pipeline against all four library apps
+ * (github-generated, google-generated, notion-generated, spotify-generated)
+ * and comparing the output against the hand-researched, source-checked
+ * guides (app/guides/github, google, notion, spotify). See README "Evidence
+ * & Verification" for how this fits into the overall evidence story.
  */
 export type EvidenceFinding = {
   category: "correct" | "wrong" | "missing";
@@ -49,32 +48,32 @@ export const evidenceComparisons: EvidenceComparison[] = [
     appName: "Google / Gmail",
     findings: [
       {
-        category: "wrong",
-        note: "Mislabeled the overall difficultyTier as self_serve. Its own step list includes a step literally titled \"Await Google review\" with a 2-8 week estimate for restricted scopes -- the tier contradicts the body of the guide it generated. The handcrafted guide calls this heavy_review, which is the answer that actually matches a developer's \"how hard will this be\" question.",
-      },
-      {
-        category: "wrong",
-        note: "developerPortalUrl points to developers.google.com/identity/sign-in/web/sign-in -- the deprecated Google Sign-In for Web library, superseded by Google Identity Services years ago. The handcrafted guide correctly links the live Cloud Console consent-screen page.",
-      },
-      {
-        category: "wrong",
-        note: "Sourcing looks broader than it is: 6 of 9 steps and most prerequisites all cite the exact same generic landing page (developers.google.com/identity/protocols/oauth2) regardless of which specific sub-step they're attached to. The Critic marked all of them DOCUMENTED because the URL appeared in search results, but a single top-level page can't actually substantiate 6 unrelated specific claims -- this inflates confidence without inflating real verification.",
-      },
-      {
-        category: "missing",
-        note: "No mention anywhere of the 100-test-user cap or the 7-day token expiry for test users -- a concrete limit a developer testing the integration will hit almost immediately, and one the handcrafted guide calls out with a direct citation.",
-      },
-      {
-        category: "missing",
-        note: "Folds the CASA security assessment for restricted scopes into a generic \"2-8 weeks\" review estimate instead of naming it as a separate, slower, paid, annually-renewed process on top of ordinary verification -- which is the detail that actually changes a developer's planning for apps like Gmail-read access.",
+        category: "correct",
+        note: "difficultyTier is now heavy_review, matching the handcrafted guide. A deterministic post-check scans the guide's own generated steps/blockers/prerequisites for gate signals (multi-week waits, security assessments, quotas) and bumps the tier up when it contradicts the guide's own body -- this is what corrected it.",
       },
       {
         category: "correct",
-        note: "The 9-step breakdown of the real Cloud Console flow (create project -> enable APIs -> consent screen -> create client ID -> redirect URIs -> test -> verification -> review -> deploy) is more granular and more actionable than the handcrafted 4-step version. Despite the wrong top-level tier, the step-by-step mechanics the agent produced are genuinely good and arguably better scaffolding than the hand-written guide.",
+        note: "Now surfaces the 100-test-user cap for unverified apps as an explicit blocker, correctly labeled REPORTED and sourced to a Stack Overflow thread -- a concrete limit a developer testing the integration hits almost immediately, previously absent entirely.",
       },
       {
         category: "correct",
-        note: "Time-to-first-test-connection (\"under 5 minutes\", no verification needed in Testing mode) matches the handcrafted guide's ~20 minutes -- same conclusion, reasonable estimate variance.",
+        note: "Now explicitly names a \"yearly security assessment\" for restricted scopes, rather than folding it into a vague multi-week estimate -- capturing the recurring, ongoing-cost nature of the requirement that matters most for a developer's long-term planning.",
+      },
+      {
+        category: "correct",
+        note: "Time-to-first-test-connection (\"a few minutes\", no verification needed in Testing mode) still matches the handcrafted guide's ~20 minutes -- same conclusion, reasonable estimate variance.",
+      },
+      {
+        category: "wrong",
+        note: "providerDocsUrl and developerPortalUrl both resolved to the same obscure page -- a Java client library doc (developers.google.com/api-client-library/java/...) -- instead of the actual live Cloud Console consent-screen/credentials page the handcrafted guide links. Resolve's single, generic search query can still latch onto the wrong specific page.",
+      },
+      {
+        category: "wrong",
+        note: "Six of seven prerequisites still cite the exact same generic landing page regardless of which specific claim they're attached to -- the source-reuse pattern that inflates apparent confidence without inflating real verification is unchanged.",
+      },
+      {
+        category: "missing",
+        note: "Every one of the 7 generated setup steps now has no evidence/sourceUrl attached at all, where the previous run at least (over-)cited one page six times. The step mechanics are still good and more granular than the handcrafted guide's 4 steps, but none of them carry a citation a developer could check.",
       },
     ],
   },
@@ -83,20 +82,24 @@ export const evidenceComparisons: EvidenceComparison[] = [
     appName: "Notion",
     findings: [
       {
-        category: "missing",
-        note: "Completely missed the public Integration Gallery review (5-10 business days) -- the one real wait a developer would hit -- and reported timeToProductionApproval as \"unknown\" instead. The resolve step also failed to find Notion's own authorization docs (providerDocsUrl came back null) even though a sibling Notion docs page (developers.notion.com/reference/request-limits) was found later in the same run -- the primary source was findable, the agent just didn't look for it specifically.",
+        category: "correct",
+        note: "difficultyTier is no longer self_serve -- it's now heavy_review, correctly indicating a real gate exists (previously the guide said \"expect no formal review\" and reported timeToProductionApproval as \"unknown\"). heavy_review is a step too far versus the handcrafted light_review (a few days of marketplace review is milder than Google's multi-week assessment), but landing on \"there is a wait\" is a vast improvement over confidently claiming there is none.",
+      },
+      {
+        category: "correct",
+        note: "The Marketplace/Gallery-style review itself now surfaces directly: \"If you aim to list the integration on the Notion Marketplace you must pass a light security review... a few days to a week\" -- in the right ballpark against the handcrafted guide's \"5-10 business days for the Integration Gallery\". This confirms the new gate-search query and the explicit \"check for an optional public listing review\" research instruction can work when research isn't derailed by a bad source (see next finding).",
       },
       {
         category: "wrong",
-        note: "Sourced the core \"how OAuth works here\" claims from a third-party blog (ones.com/blog/...) instead of Notion's own docs.notion.com/docs/authorization, which is the handcrafted guide's primary source and is one search result away. Secondary-source-over-primary-source is a quieter version of the same sourcing-quality problem seen on GitHub and Google.",
+        note: "Resolve latched onto an unrelated, official-looking page: developers.notion.com/workers/guides/oauth, which documents Notion's own \"Workers\" automation platform's OAuth capability (a worker.oauth({...}) API) -- not the \"register a public OAuth integration\" flow a third-party developer actually needs. Because the research step treats \"the official docs\" as a privileged source, this wrong page directly contaminated two of the three generated setup steps with irrelevant Workers-specific content (e.g. \"Add OAuth capability to Cloudflare Worker\"). This is a different failure mode than the one just fixed: a single generic resolve query can pick the wrong specific page when a provider's domain hosts multiple, differently-named products that all mention \"OAuth\".",
+      },
+      {
+        category: "wrong",
+        note: "With no good primary source to prefer, prerequisites and steps lean on other third-party pages for basic mechanics (e.g. asserting the redirect URI must be exactly \"/oauth/callback\", which is not a real Notion requirement) -- the same secondary-source-over-primary-source problem seen on GitHub, now compounded by resolve having picked the wrong official page in the first place.",
       },
       {
         category: "missing",
-        note: "Missed the one real blocker a developer could regret: that the installation-scope choice (Any workspace vs. Selected workspaces) can't be changed after creation. Its only blocker is generic API rate-limiting (3 req/s) -- a real but much less consequential fact, and one about using the API rather than setting up OAuth, which is scope creep away from what the assignment actually asks about.",
-      },
-      {
-        category: "missing",
-        note: "timeToFirstTestConnection came back \"unknown\" even though \"no review gate exists\" (which the agent itself states in the verdict summary) is enough to infer a short, immediate setup -- the handcrafted guide confidently says ~15 minutes from the same absence-of-review fact.",
+        note: "Still doesn't mention the one real blocker a developer could regret: that the installation-scope choice (Any workspace vs. Selected workspaces) can't be changed after creation.",
       },
     ],
   },
@@ -105,28 +108,24 @@ export const evidenceComparisons: EvidenceComparison[] = [
     appName: "Spotify",
     findings: [
       {
-        category: "wrong",
-        note: "The single most load-bearing fact in the entire Spotify guide -- that Development Mode caps a new app at 5 real authorized users, full stop, until a separate review clears -- is absent. None of the 5 generated setup steps, prerequisites, or blockers mention a user cap at all. A developer following only this guide would be surprised the moment a 6th person tries to log in.",
+        category: "correct",
+        note: "difficultyTier is now heavy_review, matching the handcrafted guide (was light_review).",
       },
       {
-        category: "wrong",
-        note: "Also missed that Extended Quota Mode has been organization-only (not individuals) since May 15, 2025 -- a hard eligibility gate that can block a solo developer outright, not just slow them down. Worth noting precisely: the handcrafted guide's own file comment documents a *different*, specific correction from an earlier research pass -- the development-mode user cap was originally assumed to be 25 and is actually 5 -- so this app's numbers are demonstrably easy to get wrong even with care. The org-only rule wasn't flagged there as a prior error, just as additional verified detail, but the live agent missing it here fits the same broader pattern: precise eligibility/quota numbers are exactly where this app's research goes wrong.",
+        category: "correct",
+        note: "Now surfaces the real Extended Quota Mode eligibility bar directly: a 250,000-monthly-active-user minimum, availability in key Spotify markets, and a registered legal entity (not an individual) -- all sourced from a Spotify Community thread and correctly labeled REPORTED rather than DOCUMENTED. All three were completely absent before.",
       },
       {
         category: "missing",
-        note: "difficultyTier came back light_review vs. the handcrafted heavy_review -- a direct consequence of the two misses above. Without the user-cap and org-only facts, the agent has no basis to flag this as the hardest-gated app in the library, which it is.",
+        note: "Still never states the single most load-bearing specific number in the whole guide: that Development Mode caps a new app at 5 real authorized users, full stop. The guide now correctly flags that a hard, slow-to-clear gate exists, but a developer still wouldn't know the exact ceiling they'll hit immediately in testing.",
       },
       {
         category: "correct",
-        note: "Two prerequisites sourced from a Spotify Community forum thread (a demo video and a scope justification list are required for quota-extension requests) were honestly labeled REPORTED rather than DOCUMENTED -- exactly the right call for a user-forum source, and a real, useful detail the handcrafted guide doesn't mention.",
+        note: "providerDocsUrl and developerPortalUrl both resolved correctly again (developer.spotify.com/.../authorization and developer.spotify.com).",
       },
       {
         category: "correct",
-        note: "providerDocsUrl and developerPortalUrl were both found correctly (developer.spotify.com/.../authorization and developer.spotify.com) -- unlike the GitHub and Notion runs, where one or both came back null. Resolve-step reliability for these fields varies by app rather than failing consistently.",
-      },
-      {
-        category: "correct",
-        note: "The six-week Extended Quota Mode review estimate matches the handcrafted guide's \"up to six weeks\" exactly.",
+        note: "The six-week Extended Quota Mode review estimate still matches the handcrafted guide's \"up to six weeks\" exactly.",
       },
     ],
   },

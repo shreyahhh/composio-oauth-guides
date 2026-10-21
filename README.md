@@ -227,29 +227,44 @@ any app in real time, and an honest evidence trail on every claim it makes.
 
 ## Evidence summary
 
-See `/evidence` for the full claim-by-claim comparison, run on 2026-10-21 via
-the live pipeline against all four library apps (GitHub, Notion, Spotify,
-Google) and diffed against the hand-verified guides. The headline finding:
-the agent is reliably good at the mechanical "how do I click through this"
-steps and reliably weak at surfacing the one gate, cap, or eligibility rule
-that actually determines how hard a provider is -- it missed Spotify's
-5-user Development Mode cap entirely, and separately missed that Extended
-Quota Mode has been organization-only since May 2025. (Spotify's quota
-numbers are demonstrably easy to get wrong even with care: this repo's own
-handcrafted guide documents a different correction on the same app -- its
-file comment records an earlier research pass assuming a 25-user cap before
-the actual 5-user figure was confirmed.) It also missed Notion's Integration
-Gallery review window, and mislabeled Google's overall
-difficulty as self-serve despite generating its own step describing a
-multi-week review. It also attached a hallucinated source to a real GitHub
-claim (a Norwegian BankID blog cited as evidence for GitHub token exchange)
-and favored a third-party blog over Notion's own docs -- the Critic confirms
-a cited URL appeared in search results, not that it's specific to the claim
-it's attached to. Not uniformly worse, though: its Google step-by-step
-breakdown was more granular than the handcrafted version, and it correctly
-labeled a Spotify forum post REPORTED rather than DOCUMENTED. Net takeaway:
-trust the live pipeline for mechanics, keep a human or Critic pass on the
-difficulty-tier and "what's the hardest part" judgment calls specifically.
+See `/evidence` for the full claim-by-claim comparison, run via the live
+pipeline against all four library apps (GitHub, Notion, Spotify, Google) and
+diffed against the hand-verified guides. The pipeline includes two targeted
+fixes built directly from earlier failures this page caught: a deterministic
+check that scans a drafted guide's own steps/blockers for gate signals and
+corrects the headline difficulty tier if it contradicts them, and a research
+query aimed specifically at caps, quotas, and eligibility rules rather than
+general review-process language.
+
+Difficulty-tier accuracy is now the strongest part of the pipeline: Google,
+Spotify, and Notion all previously had a wrong headline tier, and all three
+now correctly flag that a real gate exists. Google and Spotify land exactly
+on `heavy_review`, matching the handcrafted guides; Notion overshoots to
+`heavy_review` where `light_review` is more accurate, but that's a safer
+error than the original self_serve. Getting the tier right doesn't mean
+getting every specific right, though -- Spotify's guide now surfaces its
+real eligibility bar (a 250,000-MAU minimum, geographic availability, a
+registered legal entity) but still never states the single most load-bearing
+number in the guide: that Development Mode caps a new app at 5 real
+authorized users. And chasing the Notion fix surfaced a new failure mode:
+a re-run landed the resolve step on an official-looking but unrelated page
+(Notion's own "Workers" automation platform's OAuth docs, not the
+public-integration flow a developer needs), which then contaminated two of
+the three generated setup steps with irrelevant content -- a single generic
+search query can pick the wrong specific page when a provider's domain hosts
+multiple, differently-named products that all mention "OAuth."
+
+The source-relevance gap is unchanged: GitHub's hallucinated source (an
+unrelated blog cited as evidence for a token-exchange claim) and Google's
+source-reuse pattern (one generic landing page cited for six unrelated
+prerequisites) are both still present -- the Critic confirms a cited URL
+appeared in search results, not that it's specific to the claim it's
+attached to. Not uniformly worse, though: the agent consistently labels
+forum/community-sourced claims REPORTED rather than DOCUMENTED, which is
+good evidence discipline the handcrafted guides don't even have occasion to
+exercise. Net takeaway: the remaining failures cluster in judgment calls --
+which specific fact is load-bearing, which page is actually the right one --
+rather than in raw research effort.
 
 ## What's next
 
