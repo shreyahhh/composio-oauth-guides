@@ -6,9 +6,13 @@ import type { Guide } from "@/lib/schema/guide";
 import { DifficultyBadge, EvidenceBadge, OwnerBadge } from "./badges";
 import { CopyLinkButton } from "./copy-link-button";
 
+// A plain <div>, not <li> -- this is used both as a direct list item
+// (Prerequisites) and nested inside other <li> elements (Steps, Scopes,
+// Blockers), and <li> cannot be a descendant of <li> without an
+// intervening <ul>/<ol> (a React hydration error, not just invalid HTML).
 function ClaimLine({ text, evidence, sourceUrl }: { text: string; evidence: Guide["prerequisites"][number]["evidence"]; sourceUrl?: string | null }) {
   return (
-    <li className="flex flex-wrap items-start gap-2 text-sm">
+    <div className="flex flex-wrap items-start gap-2 text-sm">
       <EvidenceBadge label={evidence} />
       <span className="flex-1 min-w-[12rem]">
         {text}
@@ -21,7 +25,7 @@ function ClaimLine({ text, evidence, sourceUrl }: { text: string; evidence: Guid
           </>
         )}
       </span>
-    </li>
+    </div>
   );
 }
 
@@ -106,11 +110,11 @@ export function GuideView({ guide }: { guide: Guide }) {
         </CardHeader>
         <CardContent>
           {guide.prerequisites.length > 0 ? (
-            <ul className="space-y-2">
+            <div className="space-y-2">
               {guide.prerequisites.map((p, i) => (
                 <ClaimLine key={i} text={p.text} evidence={p.evidence} sourceUrl={p.sourceUrl} />
               ))}
-            </ul>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">None identified.</p>
           )}
